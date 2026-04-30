@@ -1,0 +1,32 @@
+{
+  "name": "@ecu/ai-service",
+  "version": "0.1.0",
+  "description": "AI/ML service for ECU fault prediction and diagnostic assistance",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "ts-node src/index.ts",
+    "test": "jest",
+    "test:integration": "jest --testPathPattern=integration",
+    "lint": "eslint src --ext .ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "tensorflow": "^4.15.0",
+    "@tensorflow/tfjs": "^4.15.0",
+    "@tensorflow/tfjs-node": "^4.15.0",
+    "@tensorflow/tfjs-node-gpu": "^4.15.0",
+    "ml-regression": "^6.0.1",
+    "ml-matrix": "^6.10.4",
+    "ml-distance": "^4.0.1",
+    "simple-statistics": "^7.8.2",
+    "lodash": "^4.17.21"
+  },
+  "devDependencies": {
+    "@types/lodash": "^4.14.202",
+    "@types/node": "^20.19.39",
+    "typescript": "^5.9.3",
+    "ts-node": "^10.9.2"
+  }
+}

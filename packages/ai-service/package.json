@@ -6,11 +6,18 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "dev": "ts-node src/index.ts",
+    "start": "node dist/cli.js start",
+    "demo": "node demo-ai-service.js",
+    "generate-data": "node dist/cli.js generate-data",
+    "train": "node dist/cli.js train",
     "test": "jest",
     "test:integration": "jest --testPathPattern=integration",
     "lint": "eslint src --ext .ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "clean": "rm -rf dist"
+  },
+  "bin": {
+    "ai-service": "dist/cli.js"
   },
   "dependencies": {
     "tensorflow": "^4.15.0",

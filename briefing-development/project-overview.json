@@ -1,0 +1,53 @@
+{
+  "project": {
+    "name": "ECU Simulator",
+    "version": "0.1.0",
+    "description": "Production-grade ECU diagnostic platform supporting KWP2000/ISO9141 with hybrid transport (TCP for dev/CI, K-Line serial for hardware-in-loop)",
+    "type": "Diagnostic Simulation System",
+    "domain": "Automotive / ECU Testing",
+    "status": "Early Development (Pre-Alpha)"
+  },
+  "repository": {
+    "root": "/Users/damarkuncoro/SATU RAYA INTEGRASI/ecu-simulator",
+    "packageManager": "pnpm",
+    "workspace": true,
+    "monorepo": true
+  },
+  "objectives": [
+    "Provide virtual ECU for diagnostic protocol development and testing",
+    "Support KWP2000 (ISO 14230) and ISO9141 communication protocols",
+    "Enable hardware-in-loop (HIL) testing with real K-Line hardware",
+    "Simulate realistic ECU timing (P1/P2/P3/P4) and response behaviors",
+    "Inject faults (DTC, sensor, timing, protocol) for testing diagnostic tools",
+    "Provide multiple transport layers (TCP, Serial, WebSocket) for flexibility",
+    "Support OEM-specific profiles (VAG, Toyota, Honda)",
+    "Include DTC engine compliant with SAE J2012/ISO 15031-6"
+  ],
+  "keyComponents": [
+    "Virtual ECU kernel (state machine)",
+    "KWP2000 protocol router and service handler",
+    "ISO9141 physical layer with 5-baud initialization",
+    "Timing engine (P1/P2/P3/P4 simulation + jitter)",
+    "Fault injector (DTC, sensor, timing, protocol)",
+    "DTC engine (SAE J2012 compliant)",
+    "DID registry with typed validation",
+    "Security engine (seed/key + OEM plugins)",
+    "Session FSM (XState diagnostic sessions)",
+    "Transport layers (TCP, Serial, WebSocket)",
+    "CLI diagnostic tool",
+    "Desktop UI (Electron + React)"
+  ],
+  "technologies": {
+    "language": "TypeScript",
+    "runtime": "Node.js >= 18",
+    "framework": "Monorepo (Turborepo)",
+    "protocols": ["KWP2000", "ISO9141", "UDS (ISO14229)", "CAN (ISO15765)"],
+    "stateMachine": "XState",
+    "transport": ["TCP Sockets", "SerialPort", "WebSocket"],
+    "ui": ["Electron", "React"],
+    "testing": ["Jest", "TS-Jest"],
+    "buildTools": ["TypeScript", "Turborepo", "ESLint", "Prettier"]
+  },
+  "buildDate": "2026-04-30T15:11:22+07:00",
+  "documentVersion": "1.0"
+}

@@ -1,0 +1,288 @@
+{
+  "features": {
+    "coreSimulation": {
+      "name": "Virtual ECU Core",
+      "description": "Stateful ECU simulation with diagnostic sessions, security states, and power management",
+      "status": "Planned",
+      "priority": "P0",
+      "components": [
+        "Diagnostic session management (default, programming, extended)",
+        "Security access states (locked/unlocked)",
+        "Power modes (off, sleep, normal, high-performance)",
+        "ECU identification responses"
+      ]
+    },
+    "protocolSupport": {
+      "name": "Communication Protocols",
+      "description": "Multi-protocol diagnostic communication support",
+      "status": "Partial (TCP transport only)",
+      "priority": "P0",
+      "protocols": [
+        {
+          "name": "ISO9141 / K-Line",
+          "status": "Planned",
+          "features": ["5-baud initialization", "UART framing", "K-Line wakeup"]
+        },
+        {
+          "name": "KWP2000 (ISO 14230)",
+          "status": "Planned",
+          "features": [
+            "ISO-TP framing",
+            "Service ID routing",
+            "Positive/negative responses"
+          ]
+        },
+        {
+          "name": "UDS (ISO 14229)",
+          "status": "Roadmap",
+          "features": ["Unified services", "Sub-function support"]
+        },
+        {
+          "name": "CAN (ISO 15765)",
+          "status": "Roadmap",
+          "features": [
+            "CAN-TP segmentation",
+            "Flow control",
+            "Multi-frame handling"
+          ]
+        }
+      ]
+    },
+    "dtcManagement": {
+      "name": "DTC Engine",
+      "description": "SAE J2012 / ISO 15031-6 compliant DTC storage and retrieval",
+      "status": "Operational",
+      "priority": "P0",
+      "features": [
+        "DTC encode/decode (2-byte format)",
+        "Status byte management (8 bits per DTC)",
+        "Category classification (powertrain, chassis, body, network)",
+        "Occurrence tracking",
+        "Timestamp management (first/last seen)",
+        "Bulk clear operation"
+      ],
+      "serviceIds": ["0x19"],
+      "operations": ["readDTCByStatusMask", "clearDTCInformation"]
+    },
+    "didRegistry": {
+      "name": "DID Registry",
+      "description": "Typed DID storage with read/write handlers",
+      "status": "Planned",
+      "priority": "P1",
+      "features": [
+        "Type-safe DID definitions",
+        "Validation rules per DID",
+        "Read/write permission control",
+        "Live value monitoring",
+        "Ecu state-dependent availability"
+      ],
+      "exampleDIDs": [
+        "0x0C00: EngineSpeed",
+        "0x0C01: VehicleSpeed",
+        "0x0C02: ThrottlePosition",
+        "0x0C03: CoolantTemperature"
+      ]
+    },
+    "securityAccess": {
+      "name": "Security Engine",
+      "description": "Seed/key challenge-response for protected services",
+      "status": "Planned",
+      "priority": "P1",
+      "features": [
+        "Level 1/2/3 security access",
+        "Seed generation algorithms",
+        "Key computation",
+        "Attempt counter and lockout",
+        "OEM plugin framework"
+      ],
+      "serviceId": "0x27",
+      "levels": ["0x01: Level1", "0x02: Level2", "0x03: Level3"]
+    },
+    "sessionFsm": {
+      "name": "Session State Machine",
+      "description": "XState-based diagnostic session management",
+      "status": "Planned",
+      "priority": "P1",
+      "features": [
+        "Session transitions (default -> programming -> extended)",
+        "Security state integration",
+        "Timing parameter sets per session (P1, P2, P2*)",
+        "Event guards and actions",
+        "Visualization support"
+      ]
+    },
+    "timingSimulation": {
+      "name": "Timing Engine",
+      "description": "Realistic ECU timing (P1/P2/P3/P4) with jitter",
+      "status": "Planned",
+      "priority": "P1",
+      "parameters": {
+        "P1": "Interbyte time of ECU (5ms typical)",
+        "P2": "ECU response timeout (Default: 50ms, Extended: 5000ms)",
+        "P2_star": "Server forced response delay (max 5ms)",
+        "P3": "Interframe time (minimum 5ms)",
+        "P4": "Tester idle timeout (not critical)"
+      },
+      "features": [
+        "Configurable base values",
+        "Gaussian jitter",
+        "Session-dependent parameters",
+        "Timing violation detection"
+      ]
+    },
+    "faultInjection": {
+      "name": "Fault Injector",
+      "description": "Controlled fault injection for testing diagnostic tools",
+      "status": "Planned",
+      "priority": "P2",
+      "faultTypes": [
+        "DTC injection/removal",
+        "Sensor value corruption",
+        "Timing violations (P2 timeout, late response)",
+        "Protocol errors (bad checksum, framing)",
+        "NRC manipulation",
+        "Bus-off simulation"
+      ]
+    },
+    "transportLayers": {
+      "name": "Transport Layer",
+      "description": "Multiple physical/virtual transport implementations",
+      "status": "Partial (TCP operational)",
+      "priority": "P0",
+      "modes": [
+        {
+          "name": "TCP Socket",
+          "status": "Operational",
+          "useCase": "Development, CI/CD, cloud testing",
+          "spec": "Raw TCP on port 20000, binary protocol"
+        },
+        {
+          "name": "Serial (K-Line)",
+          "status": "Planned",
+          "useCase": "Hardware-in-loop, real ECU interface",
+          "spec": "UART 10400 baud, 8N1, K-Line wakeup"
+        },
+        {
+          "name": "WebSocket",
+          "status": "Planned",
+          "useCase": "Remote UI, dashboard integration",
+          "spec": "ws://host:8080, message framing"
+        }
+      ]
+    },
+    "applications": {
+      "name": "User Applications",
+      "description": "End-user tools for interacting with ECU simulator",
+      "status": "Partial",
+      "priority": "P1",
+      "apps": [
+        {
+          "name": "CLI Diagnostic Tool",
+          "status": "Operational (basic)",
+          "features": ["Connect via transport", "Send raw requests"]
+        },
+        {
+          "name": "Desktop UI",
+          "status": "Roadmap",
+          "features": [
+            "Dashboard",
+            "DTC viewer",
+            "Live data graphing",
+            "Session control"
+          ]
+        },
+        {
+          "name": "Cloud Gateway",
+          "status": "Planned",
+          "features": [
+            "WebSocket bridge",
+            "Remote access",
+            "Multi-user support"
+          ]
+        }
+      ]
+    },
+    "oemProfiles": {
+      "name": "OEM Variant Profiles",
+      "description": "Manufacturer-specific ECU behaviors",
+      "status": "Planned",
+      "priority": "P3",
+      "profiles": [
+        {
+          "name": "VAG (Volkswagen Group)",
+          "features": [
+            "VW-specific security access",
+            "VW-DID format",
+            "Enhanced timing"
+          ]
+        },
+        {
+          "name": "Toyota",
+          "features": ["Toyota seed/key", "Mode 22 support", "Denso variants"]
+        },
+        {
+          "name": "Honda",
+          "features": ["Honda protocol quirks", "Keihin ECU profiles"]
+        },
+        {
+          "name": "Ford",
+          "features": ["Ford MS-CAN", "ISO-TP variations"]
+        }
+      ]
+    },
+    "loggingAndDebugging": {
+      "name": "Logging & PCAP",
+      "description": "Structured logging and protocol capture",
+      "status": "Planned",
+      "priority": "P2",
+      "features": [
+        "Structured JSON logs",
+        "PCAP export (K-Line/TCP)",
+        "Session replay",
+        "Timing analysis reports"
+      ]
+    },
+    "testing": {
+      "name": "Test Framework",
+      "description": "Multi-level testing (unit, integration, HIL)",
+      "status": "Partial (unit tests only)",
+      "priority": "P1",
+      "levels": [
+        {
+          "type": "Unit Tests",
+          "status": "Partial",
+          "coverage": "DTC engine, some utilities"
+        },
+        {
+          "type": "Integration Tests",
+          "status": "Planned",
+          "scope": "Protocol + transport + service integration"
+        },
+        {
+          "type": "HIL Tests",
+          "status": "Planned",
+          "scope": "Real hardware with K-Line adapter"
+        }
+      ]
+    }
+  },
+  "featurePriorities": {
+    "P0": [
+      "Virtual ECU Core",
+      "KWP2000 protocol support",
+      "Transport layers",
+      "DTC Engine"
+    ],
+    "P1": [
+      "DID Registry",
+      "Security Access",
+      "Session FSM",
+      "Timing Engine",
+      "Applications"
+    ],
+    "P2": ["Fault Injection", "Logging/PCAP", "Integration Tests"],
+    "P3": ["OEM Profiles", "UDS/CAN protocols", "Cloud Gateway"]
+  },
+  "buildDate": "2026-04-30T15:11:22+07:00",
+  "documentVersion": "1.0"
+}

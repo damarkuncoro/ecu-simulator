@@ -1,0 +1,514 @@
+{
+  "automationFlow": {
+    "overview": {
+      "description": "End-to-end automation pipeline covering development, testing, deployment, and monitoring",
+      "toolchain": [
+        "Turborepo",
+        "GitHub Actions",
+        "Docker",
+        "Jest",
+        "Playwright",
+        "Prometheus",
+        "Grafana"
+      ],
+      "maturity": "Partial (CI/CD operational, full automation in progress)"
+    },
+    "pipelines": {
+      "development": {
+        "name": "Local Development Workflow",
+        "trigger": "Manual (developer action)",
+        "steps": [
+          {
+            "id": "dev-1",
+            "name": "Start Monorepo",
+            "command": "npm run dev",
+            "tool": "Turborepo",
+            "description": "Parallel build and watch mode for all packages"
+          },
+          {
+            "id": "dev-2",
+            "name": "Type Check",
+            "command": "turbo run typecheck",
+            "tool": "TypeScript",
+            "description": "Incremental type checking across packages"
+          },
+          {
+            "id": "dev-3",
+            "name": "Lint",
+            "command": "turbo run lint",
+            "tool": "ESLint",
+            "description": "Code quality and style checks"
+          },
+          {
+            "id": "dev-4",
+            "name": "Run Unit Tests",
+            "command": "npm run test:unit",
+            "tool": "Jest",
+            "description": "Execute unit tests with watch mode"
+          },
+          {
+            "id": "dev-5",
+            "name": "Start ECU Simulator",
+            "command": "ECU_TRANSPORT=tcp npm run ecu:start:tcp",
+            "tool": "Node.js",
+            "description": "Launch virtual ECU in TCP mode"
+          },
+          {
+            "id": "dev-6",
+            "name": "Run Integration Tests",
+            "command": "npm run test:integration",
+            "tool": "Jest",
+            "description": "Test against running ECU instance"
+          }
+        ],
+        "outputs": ["Built packages", "Test results", "Running ECU instance"],
+        "artifacts": ["dist/", "coverage/", "logs/"],
+        "estimatedTime": "2-5 minutes"
+      },
+      "ci_cd": {
+        "name": "GitHub Actions CI/CD Pipeline",
+        "trigger": ["push", "pull_request", "release"],
+        "workflowFile": ".github/workflows/ci.yml",
+        "stages": [
+          {
+            "stage": "validate",
+            "parallel": true,
+            "jobs": [
+              {
+                "id": "lint",
+                "name": "Lint All Packages",
+                "commands": ["npm run lint"],
+                "successCriteria": "0 linting errors"
+              },
+              {
+                "id": "typecheck",
+                "name": "TypeScript Type Check",
+                "commands": ["npm run typecheck"],
+                "successCriteria": "0 type errors"
+              },
+              {
+                "id": "format",
+                "name": "Prettier Format Check",
+                "commands": ["npx prettier --check ."],
+                "successCriteria": "No formatting issues"
+              }
+            ]
+          },
+          {
+            "stage": "test",
+            "dependsOn": ["validate"],
+            "parallel": true,
+            "jobs": [
+              {
+                "id": "unit_tests",
+                "name": "Unit Tests",
+                "commands": [
+                  "npm run test:unit",
+                  "npm run test:unit -- --coverage"
+                ],
+                "successCriteria": "Coverage > 80%",
+                "coverage": {
+                  "branches": 80,
+                  "functions": 85,
+                  "lines": 85,
+                  "statements": 85
+                }
+              },
+              {
+                "id": "build_packages",
+                "name": "Build All Packages",
+                "commands": ["npm run build"],
+                "successCriteria": "All packages build successfully"
+              }
+            ]
+          },
+          {
+            "stage": "integration",
+            "dependsOn": ["test"],
+            "jobs": [
+              {
+                "id": "docker_setup",
+                "name": "Start Docker Environment",
+                "commands": [
+                  "docker-compose up -d virtual-ecu",
+                  "sleep 10 # wait for health check"
+                ],
+                "successCriteria": "ECU container healthy"
+              },
+              {
+                "id": "integration_tests",
+                "name": "Integration Tests",
+                "commands": ["npm run test:integration"],
+                "successCriteria": "All tests passing"
+              },
+              {
+                "id": "protocol_tests",
+                "name": "Protocol Compliance Tests",
+                "commands": [
+                  "node tools/replay-runner/validate-pcap.js",
+                  "node tools/timing-validator/check-timing.js"
+                ],
+                "successCriteria": "Protocol timing within spec"
+              }
+            ]
+          },
+          {
+            "stage": "deploy",
+            "dependsOn": ["integration"],
+            "condition": "branch == main && tag",
+            "jobs": [
+              {
+                "id": "docker_build",
+                "name": "Build Production Images",
+                "commands": [
+                  "docker build -t ecu-simulator:latest .",
+                  "docker build -f docker/Dockerfile.gateway -t ecu-gateway:latest ."
+                ]
+              },
+              {
+                "id": "publish",
+                "name": "Publish to Registry",
+                "commands": [
+                  "docker tag ecu-simulator:latest ghcr.io/owner/ecu-simulator:${{ github.sha }}",
+                  "docker push ghcr.io/owner/ecu-simulator:${{ github.sha }}"
+                ],
+                "condition": "production release"
+              }
+            ]
+          }
+        ]
+      },
+      "testing_automation": {
+        "name": "Testing Automation Hierarchy",
+        "levels": [
+          {
+            "level": "Unit (L1)",
+            "scope": "Individual functions/classes",
+            "tools": ["Jest", "ts-jest"],
+            "parallelism": "High (all packages simultaneously)",
+            "frequency": "On every save (watch mode)",
+            "successRate": "95%+",
+            "coverage": "85%+"
+          },
+          {
+            "level": "Integration (L2)",
+            "scope": "Package interactions, protocol + transport",
+            "tools": ["Jest", "Supertest"],
+            "setup": "Docker-based ECU instance",
+            "testTypes": [
+              "KWP2000 service round-trips",
+              "Transport connection lifecycle",
+              "DTC read/clear operations",
+              "Security access flow"
+            ],
+            "frequency": "On PR and push to main",
+            "successRate": "98%+"
+          },
+          {
+            "level": "HIL (L3)",
+            "scope": "Hardware-in-loop with real K-Line adapter",
+            "tools": ["Custom test rig", "SerialPort"],
+            "setup": "Physical ECU simulator + test hardware",
+            "testTypes": [
+              "Real signal integrity",
+              "Timing accuracy (oscilloscope verified)",
+              "5-baud initialization",
+              "Voltage levels"
+            ],
+            "frequency": "Nightly, pre-release",
+            "successRate": "99%+"
+          },
+          {
+            "level": "E2E (L4)",
+            "scope": "Full diagnostic scenarios",
+            "tools": ["Playwright", "Cypress"],
+            "browser": "Electron / Chrome",
+            "testTypes": [
+              "UI workflow tests",
+              "Multi-session diagnostics",
+              "OEM profile switching",
+              "Fault injection + diagnosis"
+            ],
+            "frequency": "Nightly",
+            "successRate": "95%+"
+          }
+        ]
+      },
+      "fault_injection_pipeline": {
+        "name": "Automated Fault Testing",
+        "description": "Systematic fault injection and recovery testing",
+        "stages": [
+          {
+            "stage": "baseline",
+            "action": "Run normal operation tests",
+            "metrics": ["response_time", "error_rate", "throughput"]
+          },
+          {
+            "stage": "inject",
+            "action": "Activate fault scenario via API",
+            "scenarios": [
+              "DTC injection",
+              "Timing violation (P2 timeout)",
+              "Protocol error (bad checksum)",
+              "Bus-off (CAN)",
+              "Serial framing error"
+            ]
+          },
+          {
+            "stage": "validate",
+            "action": "Verify correct error response",
+            "checks": [
+              "Correct NRC generated",
+              "Session state preserved",
+              "No crash/hang",
+              "Logging captures fault"
+            ]
+          },
+          {
+            "stage": "recover",
+            "action": "Clear fault, verify recovery",
+            "checks": [
+              "System returns to baseline",
+              "Performance restored",
+              "No residual errors"
+            ]
+          },
+          {
+            "stage": "report",
+            "action": "Generate test report",
+            "artifacts": ["JUnit XML", "JSON report", "PCAP capture"]
+          }
+        ],
+        "automation": "Cron-driven + PR triggered",
+        "schedule": "Daily at 2 AM"
+      },
+      "deployment": {
+        "name": "Multi-Environment Deployment",
+        "environments": [
+          {
+            "name": "development",
+            "method": "Local build + run",
+            "command": "turbo run dev --parallel",
+            "transport": "TCP",
+            "frequency": "On developer machine"
+          },
+          {
+            "name": "staging",
+            "method": "Docker Compose",
+            "command": "docker-compose up -d",
+            "transport": "TCP",
+            "frequency": "On merge to main"
+          },
+          {
+            "name": "production_hil",
+            "method": "Serial transport + Docker",
+            "command": "ECU_TRANSPORT=serial docker-compose up -d",
+            "transport": "K-Line Serial",
+            "frequency": "Manual deployment"
+          }
+        ],
+        "rollback": {
+          "strategy": "Blue-green with Docker",
+          "command": "docker-compose down && docker-compose up -d [previous_version]",
+          "time": "< 30 seconds"
+        }
+      }
+    },
+    "orchestration": {
+      "tool": "GitHub Actions",
+      "workflows": [
+        {
+          "name": "Continuous Integration",
+          "file": ".github/workflows/ci.yml",
+          "on": ["push", "pull_request"],
+          "jobs": ["lint", "typecheck", "unit_tests", "build"]
+        },
+        {
+          "name": "Integration Testing",
+          "file": ".github/workflows/integration.yml",
+          "on": ["push_to_main", "schedule"],
+          "jobs": ["docker_setup", "integration_tests", "protocol_validation"]
+        },
+        {
+          "name": "Release Pipeline",
+          "file": ".github/workflows/release.yml",
+          "on": ["tag_push"],
+          "jobs": ["build", "test", "docker_build", "publish"]
+        },
+        {
+          "name": "Nightly Automation",
+          "file": ".github/workflows/nightly.yml",
+          "on": { "schedule": "0 2 * * *" },
+          "jobs": ["fault_injection", "coverage_report", "performance_test"]
+        }
+      ]
+    },
+    "monitoring": {
+      "metrics": {
+        "prometheus": {
+          "endpoints": ["/metrics"],
+          "scrapeInterval": "15s",
+          "metrics": [
+            "ecu_response_time_p95",
+            "ecu_error_rate",
+            "protocol_negative_responses",
+            "transport_connection_count",
+            "dtc_count",
+            "test_execution_duration"
+          ]
+        }
+      },
+      "logging": {
+        "structured": "JSON formatted",
+        "levels": ["debug", "info", "warn", "error", "fatal"],
+        "outputs": ["stdout", "file", "elasticsearch (optional)"],
+        "format": "timestamp, level, package, message, context"
+      },
+      "alerts": {
+        "channels": ["Slack", "Email", "PagerDuty"],
+        "rules": [
+          "ERROR rate > 5% for 5 minutes",
+          "Response time P95 > 200ms",
+          "Test suite failure",
+          "Docker container unhealthy"
+        ]
+      },
+      "dashboards": {
+        "grafana": {
+          "dashboards": [
+            "ECU Performance",
+            "Test Results",
+            "Protocol Stats",
+            "System Health"
+          ],
+          "panels": [
+            "Response time distribution",
+            "DTC frequency over time",
+            "Protocol error breakdown",
+            "CI/CD pipeline status",
+            "Test coverage trend"
+          ]
+        }
+      }
+    },
+    "test_automation_config": {
+      "jest": {
+        "preset": "ts-jest",
+        "testEnvironment": "node",
+        "coverageDirectory": "coverage",
+        "collectCoverageFrom": ["packages/*/src/**/*.ts", "!**/*.d.ts"],
+        "coverageThreshold": {
+          "global": {
+            "branches": 80,
+            "functions": 85,
+            "lines": 85,
+            "statements": 85
+          }
+        },
+        "testMatch": ["**/__tests__/**/*.ts", "**/?(*.)+(spec|test).ts"]
+      },
+      "scenarios": [
+        {
+          "name": "KWP2000 Session Flow",
+          "steps": [
+            "Connect via TCP",
+            "Start default session (0x10 0x01)",
+            "Request seed (0x27 0x01)",
+            "Send key (0x27 0x02)",
+            "Read DTCs (0x19 0x02)",
+            "Clear DTCs (0x14)",
+            "Stop session (0x10 0x00)"
+          ],
+          "expected": "All operations succeed, valid responses"
+        },
+        {
+          "name": "DTC Lifecycle",
+          "steps": [
+            "Inject fault (via fault injector)",
+            "Verify DTC appears (0x19 0x02)",
+            "Read freeze frame data (0x19 0x04)",
+            "Clear DTCs (0x14)",
+            "Verify DTC cleared"
+          ],
+          "expected": "DTC correctly stored, retrieved, and cleared"
+        },
+        {
+          "name": "Security Access Levels",
+          "steps": [
+            "Request level 1 seed",
+            "Fail to send wrong key 3 times",
+            "Verify lockout",
+            "Wait timeout",
+            "Verify unlock"
+          ],
+          "expected": "Security state machine enforces policies"
+        }
+      ]
+    },
+    "data_management": {
+      "artifacts": {
+        "testResults": "junit.xml, results.json",
+        "coverage": "lcov.info, cobertura.xml",
+        "logs": "ecu.log, test-output.log",
+        "pcap": "session-captures.pcap",
+        "reports": "html-report/, performance-report.json"
+      },
+      "retention": {
+        "testResults": "30 days",
+        "coverage": "90 days",
+        "logs": "7 days",
+        "pcap": "1 day (except failures)",
+        "reports": "indefinite (release artifacts)"
+      },
+      "storage": {
+        "shortTerm": "Local disk /tmp",
+        "longTerm": "AWS S3 (for releases)",
+        "backup": "Daily to cloud storage"
+      }
+    },
+    "quality_gates": {
+      "pre_commit": [
+        "ESLint passes",
+        "Prettier format check",
+        "TypeScript no errors",
+        "Unit tests pass (affected packages)"
+      ],
+      "pre_merge": [
+        "All CI checks pass",
+        "Coverage threshold met",
+        "Integration tests pass",
+        "No performance regression",
+        "Review approved (2 reviewers)"
+      ],
+      "pre_production": [
+        "Full test suite green",
+        "HIL tests passed (last 3 runs)",
+        "No high/critical bugs open",
+        "Performance criteria met",
+        "Security review completed"
+      ]
+    },
+    "environment_configs": {
+      "development": {
+        "ECU_TRANSPORT": "tcp",
+        "LOG_LEVEL": "debug",
+        "MOCK_EXTERNAL": "true",
+        "TEST_MODE": "true"
+      },
+      "staging": {
+        "ECU_TRANSPORT": "tcp",
+        "LOG_LEVEL": "info",
+        "ENABLE_METRICS": "true",
+        "ENABLE_PROFILING": "true"
+      },
+      "production": {
+        "ECU_TRANSPORT": "serial",
+        "LOG_LEVEL": "warn",
+        "ENABLE_METRICS": "true",
+        "HEALTH_CHECK": "true"
+      }
+    },
+    "buildDate": "2026-04-30T15:11:22+07:00",
+    "documentVersion": "1.0"
+  }
+}

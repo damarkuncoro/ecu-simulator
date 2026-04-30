@@ -1,0 +1,315 @@
+{
+  "systemDesign": {
+    "architecturePattern": "Layered Modular Architecture with Event-Driven Communication",
+    "designPhilosophy": "Separation of concerns with clear boundaries between protocol, transport, service, and application layers",
+    "components": {
+      "ecuKernel": {
+        "role": "Central ECU state coordinator",
+        "responsibilities": [
+          "Manage diagnostic session lifecycle",
+          "Control security access states",
+          "Coordinate power modes",
+          "Route incoming requests to appropriate handlers",
+          "Enforce state transition rules",
+          "Maintain ECU identification data"
+        ],
+        "stateMachine": {
+          "states": [
+            "off",
+            "sleep",
+            "defaultSession",
+            "programmingSession",
+            "extendedSession"
+          ],
+          "events": ["wakeup", "startDiagnostic", "securityAccess", "shutdown"],
+          "guards": ["validTiming", "validRequestFormat", "sessionAuthorized"]
+        },
+        "interfaces": [
+          "IDiagnosticSession",
+          "ISecurityManager",
+          "IPowerManager"
+        ]
+      },
+      "protocolLayer": {
+        "role": "Protocol framing, parsing, and validation",
+        "subcomponents": {
+          "iso9141": {
+            "function": "Physical layer: byte stuffing, 5-baud init, checksum validation",
+            "responsibilities": [
+              "UART framing",
+              "Wakeup sequence",
+              "Header validation"
+            ]
+          },
+          "kwp2000": {
+            "function": "ISO 14230-3/4 session and service management",
+            "responsibilities": [
+              "ISO-TP segmentation",
+              "Service routing",
+              "NRC generation"
+            ]
+          },
+          "uds": {
+            "function": "ISO 14229 unified diagnostic services",
+            "responsibilities": ["Service dispatch", "Parameter validation"]
+          }
+        },
+        "flow": [
+          "1. Receive raw bytes from transport layer",
+          "2. Parse framing (K-Line or CAN-TP)",
+          "3. Validate message format and checksum",
+          "4. Extract service ID and parameters",
+          "5. Route to appropriate service handler",
+          "6. Collect response from service",
+          "7. Apply timing (P1-P4)",
+          "8. Frame and send response"
+        ]
+      },
+      "serviceLayer": {
+        "role": "Business logic for diagnostic operations",
+        "services": {
+          "dtcEngine": {
+            "interface": "IDtcService",
+            "operations": ["readDTC", "clearDTC", "getStatusMask"],
+            "storage": "In-memory Map<number, DTC>"
+          },
+          "didRegistry": {
+            "interface": "IDidService",
+            "operations": ["readDid", "writeDid", "listDids"],
+            "storage": "Map<number, DidDefinition<T>>"
+          },
+          "securityEngine": {
+            "interface": "ISecurityService",
+            "operations": ["requestSeed", "validateKey", "resetAttempts"],
+            "state": "{level: number, locked: boolean, attempts: number}"
+          },
+          "sessionManager": {
+            "interface": "ISessionService",
+            "operations": ["startSession", "stopSession", "getActiveSession"],
+            "implementation": "XState state machine"
+          }
+        },
+        "characteristics": [
+          "Stateless service handlers",
+          "Dependency-injected storage",
+          "Request/response pattern"
+        ]
+      },
+      "transportLayer": {
+        "role": "Physical/virtual communication abstraction",
+        "design": "Abstract factory pattern with pluggable implementations",
+        "interface": "ITransport",
+        "implementations": {
+          "tcp": {
+            "class": "TcpTransport",
+            "features": ["Net.Socket", "Buffered read", "Timeout per operation"]
+          },
+          "serial": {
+            "class": "SerialTransport",
+            "features": ["SerialPort", "5-baud init", "Bit-banged K-Line"]
+          },
+          "websocket": {
+            "class": "WebSocketTransport",
+            "features": [
+              "Message framing",
+              "Binary protocol",
+              "Session multiplexing"
+            ]
+          }
+        },
+        "common": [
+          "Connection lifecycle management",
+          "Send/Receive with timeouts",
+          "Error classification (timeout, disconnect, protocol)",
+          "Statistics tracking (bytes, errors)",
+          "Event emission (connected, data, error)"
+        ]
+      },
+      "timingEngine": {
+        "role": "Realistic ECU timing simulation",
+        "parameters": {
+          "P1": {
+            "description": "Interbyte time",
+            "default": 5,
+            "unit": "ms",
+            "jitter": "±2ms Gaussian"
+          },
+          "P2": {
+            "description": "Response timeout",
+            "default": 50,
+            "unit": "ms",
+            "extended": 5000,
+            "jitter": "±5ms"
+          },
+          "P2*": {
+            "description": "Server delay",
+            "default": 0,
+            "max": 5,
+            "unit": "ms"
+          },
+          "P3": {
+            "description": "Interframe gap",
+            "default": 5,
+            "unit": "ms",
+            "jitter": "±1ms"
+          }
+        },
+        "implementation": "Async delays with configurable profiles per session",
+        "violationHandling": [
+          "Log warning",
+          "Send negative response 0x78 (requestCorrectlyReceived-ResponsePending)"
+        ]
+      },
+      "faultInjector": {
+        "role": "Controlled fault simulation",
+        "modes": ["manual", "scheduled", "random"],
+        "faults": [
+          "DTC injection",
+          "Sensor value corruption (bit-flip, offset, saturation)",
+          "Timing violation (delayed response)",
+          "Protocol error (bad length, checksum)",
+          "NRC override",
+          "Bus errors (CAN)"
+        ],
+        "triggers": ["API call", "time-based", "condition-based"]
+      },
+      "applications": {
+        "cliDiag": {
+          "type": "Command-line interface",
+          "role": "Primary diagnostic tool",
+          "features": [
+            "REPL mode",
+            "Batch command execution",
+            "Scripting support"
+          ]
+        },
+        "desktopUi": {
+          "type": "Electron + React GUI",
+          "role": "Visual dashboard",
+          "features": [
+            "Real-time graphs",
+            "DTC viewer",
+            "Session control",
+            "Live data display"
+          ]
+        },
+        "cloudGateway": {
+          "type": "WebSocket bridge",
+          "role": "Remote access layer",
+          "features": ["TCP-to-WS proxy", "Message routing", "Authentication"]
+        }
+      }
+    },
+    "dataFlow": {
+      "requestPath": [
+        "1. Application sends request via ITransport.send()",
+        "2. Transport transmits bytes over medium (TCP/Serial/WS)",
+        "3. Protocol layer receives bytes via transport.on('data')",
+        "4. Protocol validates framing and checksum",
+        "5. Protocol extracts service ID and parameters",
+        "6. Protocol checks session FSM for validity",
+        "7. Protocol routes to service handler via ServiceRouter",
+        "8. Service handler reads/writes from/to state stores",
+        "9. Service returns response payload and NRC",
+        "10. Protocol applies timing (P1 interbyte, P2 response)",
+        "11. Protocol frames response with checksum",
+        "12. Transport sends framed response",
+        "13. Application receives via TTransport.read() or event"
+      ],
+      "faultPath": [
+        "Any layer can inject faults",
+        "Protocol generates NRC on validation failure",
+        "Security layer challenges protected services",
+        "Timing engine simulates realistic delays"
+      ]
+    },
+    "stateManagement": {
+      "ecuState": {
+        "type": "XState finite state machine",
+        "states": [
+          { "name": "off", "substates": [] },
+          { "name": "sleep", "substates": [] },
+          { "name": "defaultSession", "substates": ["unlocked", "locked"] },
+          { "name": "programmingSession", "substates": ["unlocked", "locked"] },
+          { "name": "extendedSession", "substates": ["unlocked", "locked"] }
+        ],
+        "events": [
+          "startCommunication",
+          "requestSeed",
+          "sendKey",
+          "shutdown",
+          "timeout"
+        ]
+      },
+      "stores": {
+        "dtcStore": "Map<number, DTC> - persisted in memory",
+        "didStore": "Map<number, DidDefinition<T>> - typed definitions",
+        "securityStore": "{level, attempts, lockedUntil, seedHistory}",
+        "sessionStore": "XState persisted state"
+      }
+    },
+    "communicationPatterns": {
+      "synchronous": "Request-response over single transport connection",
+      "eventDriven": "Transport emits events (connected, data, error)",
+      "pubSub": "Internal service events via EventEmitter",
+      "async": "Promises with timeouts for all I/O operations"
+    },
+    "errorHandling": {
+      "strategy": "Typed errors with context, NRC generation per ISO 14230",
+      "errorTypes": [
+        "TransportError (timeout, disconnect, protocol)",
+        "ProtocolError (framing, checksum, length)",
+        "SessionError (invalid state transition)",
+        "SecurityError (locked, invalid key)",
+        "ValidationError (parameter out of range)"
+      ],
+      "nrcCodes": [
+        "0x00: positive",
+        "0x10: generalReject",
+        "0x11: serviceNotSupported",
+        "0x12: subFunctionNotSupported",
+        "0x13: incorrectMessageLength",
+        "0x14: responseTooLong",
+        "0x21: busyRepeatRequest (0x78)",
+        "0x22: conditionsNotCorrect",
+        "0x24: requestSequenceError",
+        "0x27: securityAccessDenied",
+        "0x31: requestOutOfRange",
+        "0x33: securityAccess",
+        "0x78: requestCorrectlyReceived-ResponsePending"
+      ]
+    },
+    "scalability": {
+      "horizontal": "Multiple ECU instances via different TCP ports",
+      "vertical": "In-memory stores, async I/O, event loop friendly",
+      "bottlenecks": [
+        "Single-threaded Node.js",
+        "In-memory persistence",
+        "Serial port contention"
+      ]
+    },
+    "reliability": {
+      "timeoutHandling": "All I/O has configurable timeouts",
+      "errorRecovery": "Transport reconnect, session reset",
+      "dataIntegrity": "Checksum validation, type-safe DIDs",
+      "testability": "Mock transport for unit tests, fault injection hooks"
+    },
+    "extensibility": {
+      "pluginPoints": [
+        "New transport via ITransport implementation",
+        "New protocol via ProtocolRouter registration",
+        "New service via ServiceRouter registration",
+        "OEM profiles via configuration"
+      ],
+      "openClosed": "New protocols/services added without modifying core",
+      "dependencyInjection": "Services receive stores and config via constructor"
+    },
+    "deploymentArchitecture": {
+      "development": "Single Node process with TCP transport",
+      "testing": "Docker Compose with isolated ECU instance",
+      "production": "Serial transport + optional Cloud Gateway for remote access"
+    },
+    "buildDate": "2026-04-30T15:11:22+07:00",
+    "documentVersion": "1.0"
+  }
+}

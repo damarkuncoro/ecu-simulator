@@ -1,0 +1,365 @@
+{
+  "databaseSchema": {
+    "storageType": "In-memory Map-based storage (persistent options planned)",
+    "persistence": {
+      "current": "Volatile memory (lost on process exit)",
+      "planned": [
+        "SQLite for local persistence",
+        "PostgreSQL for multi-instance sync",
+        "Redis for caching/session store"
+      ]
+    },
+    "collections": {
+      "dtcs": {
+        "name": "DTC Collection",
+        "type": "Map<number, DTC>",
+        "key": "code (number) - 2-byte DTC code",
+        "schema": {
+          "code": {
+            "type": "number",
+            "required": true,
+            "description": "Raw 2-byte DTC code (e.g., 0x0300 = P0300)"
+          },
+          "category": {
+            "type": "string",
+            "enum": ["powertrain", "chassis", "body", "network"],
+            "required": true
+          },
+          "status": {
+            "type": "object",
+            "required": true,
+            "properties": {
+              "testFailed": { "type": "boolean" },
+              "testFailedThisMonitoringCycle": { "type": "boolean" },
+              "pendingDTC": { "type": "boolean" },
+              "confirmedDTC": { "type": "boolean" },
+              "testNotCompletedSinceLastClear": { "type": "boolean" },
+              "testFailedSinceLastClear": { "type": "boolean" },
+              "testNotCompletedThisMonitoringCycle": { "type": "boolean" },
+              "warningIndicatorRequested": { "type": "boolean" }
+            }
+          },
+          "occurrenceCount": { "type": "number", "minimum": 1, "default": 1 },
+          "firstSeen": {
+            "type": "string",
+            "format": "date-time",
+            "required": true
+          },
+          "lastSeen": {
+            "type": "string",
+            "format": "date-time",
+            "required": true
+          },
+          "description": { "type": "string", "optional": true }
+        },
+        "indexes": [
+          { "field": "code", "type": "primary" },
+          { "field": "category", "type": "secondary" },
+          { "field": "status.confirmedDTC", "type": "secondary" },
+          { "field": "status.pendingDTC", "type": "secondary" },
+          { "field": "lastSeen", "type": "secondary" }
+        ],
+        "operations": [
+          { "name": "set(code, status, description)", "type": "upsert" },
+          { "name": "get(code)", "type": "read" },
+          { "name": "getByStatusMask(mask)", "type": "query" },
+          { "name": "clear(mask)", "type": "delete" },
+          { "name": "getAll()", "type": "scan" },
+          { "name": "countByCategory(category)", "type": "aggregate" }
+        ],
+        "constraints": [
+          "code must be 16-bit unsigned integer (0x0000-0xFFFF)",
+          "occurrenceCount auto-increments on update",
+          "firstSeen immutable after initial insert",
+          "lastSeen updated on every modification"
+        ]
+      },
+      "dids": {
+        "name": "DID Registry",
+        "type": "Map<number, DidDefinition<T>>",
+        "key": "identifier (number) - 2-byte DID identifier",
+        "schema": {
+          "identifier": {
+            "type": "number",
+            "required": true,
+            "minimum": 0,
+            "maximum": 65535
+          },
+          "name": {
+            "type": "string",
+            "required": true,
+            "example": "EngineSpeed"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "uint8",
+              "uint16",
+              "uint32",
+              "int8",
+              "int16",
+              "int32",
+              "float",
+              "string",
+              "buffer"
+            ],
+            "required": true
+          },
+          "unit": { "type": "string", "optional": true, "example": "rpm" },
+          "scale": { "type": "number", "optional": true, "default": 1 },
+          "offset": { "type": "number", "optional": true, "default": 0 },
+          "minValue": { "type": "number", "optional": true },
+          "maxValue": { "type": "number", "optional": true },
+          "readable": { "type": "boolean", "default": true },
+          "writable": { "type": "boolean", "default": false },
+          "sessionSpecific": { "type": "boolean", "default": false },
+          "securityLevel": { "type": "number", "minimum": 0, "default": 1 },
+          "value": {
+            "type": "any",
+            "description": "Current value (type matches 'type' field)"
+          },
+          "validator": {
+            "type": "function",
+            "optional": true,
+            "description": "Custom validation function"
+          },
+          "readHandler": {
+            "type": "function",
+            "optional": true,
+            "description": "Function to compute value on read"
+          },
+          "writeHandler": {
+            "type": "function",
+            "optional": true,
+            "description": "Function to handle writes"
+          }
+        },
+        "indexes": [
+          { "field": "identifier", "type": "primary" },
+          { "field": "name", "type": "secondary" },
+          { "field": "readable", "type": "secondary" },
+          { "field": "writable", "type": "secondary" }
+        ],
+        "operations": [
+          { "name": "register(definition)", "type": "create" },
+          { "name": "read(identifier)", "type": "read" },
+          { "name": "write(identifier, value)", "type": "update" },
+          { "name": "list(filter)", "type": "query" },
+          { "name": "remove(identifier)", "type": "delete" }
+        ],
+        "constraints": [
+          "identifier must be unique",
+          "write validation against type and bounds",
+          "security level enforced by session FSM",
+          "read/write handlers optional but mutually exclusive with direct value access"
+        ]
+      },
+      "security": {
+        "name": "Security Access Store",
+        "type": "object",
+        "schema": {
+          "level": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 255,
+            "default": 0
+          },
+          "unlocked": { "type": "boolean", "default": false },
+          "attempts": { "type": "number", "minimum": 0, "default": 0 },
+          "maxAttempts": { "type": "number", "default": 3 },
+          "lockoutTime": { "type": "number", "minimum": 0, "default": 0 },
+          "unlockedAt": {
+            "type": "string",
+            "format": "date-time",
+            "optional": true
+          },
+          "seedHistory": {
+            "type": "array",
+            "items": { "type": "object" },
+            "maxItems": 10
+          }
+        },
+        "operations": [
+          {
+            "name": "requestSeed(level)",
+            "type": "action",
+            "returns": "{seed: number, level: number}"
+          },
+          {
+            "name": "validateKey(level, key)",
+            "type": "action",
+            "returns": "boolean"
+          },
+          { "name": "reset()", "type": "action" },
+          { "name": "getState()", "type": "read" }
+        ],
+        "constraints": [
+          "3 failed attempts triggers lockout",
+          "lockout duration increases exponentially",
+          "unlocked state expires after 300 seconds"
+        ]
+      },
+      "sessions": {
+        "name": "Session State Store (XState)",
+        "type": "persisted state machine state",
+        "schema": {
+          "currentState": {
+            "type": "string",
+            "enum": ["off", "sleep", "default", "programming", "extended"]
+          },
+          "previousState": { "type": "string", "optional": true },
+          "context": {
+            "type": "object",
+            "properties": {
+              "security": { "type": "object" },
+              "timingProfile": { "type": "string" },
+              "activeDids": { "type": "array" }
+            }
+          },
+          "history": {
+            "type": "array",
+            "items": { "type": "object" },
+            "maxItems": 100
+          }
+        },
+        "operations": [
+          { "name": "send(event)", "type": "transition" },
+          { "name": "getState()", "type": "read" },
+          { "name": "snapshot()", "type": "persist" },
+          { "name": "restore(state)", "type": "hydrate" }
+        ]
+      },
+      "timing": {
+        "name": "Timing Parameters Store",
+        "type": "object",
+        "schema": {
+          "sessionProfiles": {
+            "type": "object",
+            "properties": {
+              "default": {
+                "type": "object",
+                "properties": {
+                  "P1": 5,
+                  "P2": 50,
+                  "P2_star": 5,
+                  "P3": 5,
+                  "P4": 5
+                }
+              },
+              "programming": {
+                "type": "object",
+                "properties": {
+                  "P1": 5,
+                  "P2": 5000,
+                  "P2_star": 5,
+                  "P3": 5,
+                  "P4": 5
+                }
+              },
+              "extended": {
+                "type": "object",
+                "properties": {
+                  "P1": 5,
+                  "P2": 5000,
+                  "P2_star": 5,
+                  "P3": 5,
+                  "P4": 5
+                }
+              }
+            }
+          }
+        },
+        "jitterConfig": {
+          "enabled": { "type": "boolean", "default": true },
+          "distribution": {
+            "type": "string",
+            "enum": ["gaussian", "uniform"],
+            "default": "gaussian"
+          },
+          "variance": { "type": "number", "default": 0.2 }
+        }
+      },
+      "transportStats": {
+        "name": "Transport Statistics",
+        "type": "object",
+        "schema": {
+          "bytesReceived": { "type": "number", "minimum": 0, "default": 0 },
+          "bytesSent": { "type": "number", "minimum": 0, "default": 0 },
+          "errors": { "type": "number", "minimum": 0, "default": 0 },
+          "messagesReceived": { "type": "number", "minimum": 0, "default": 0 },
+          "messagesSent": { "type": "number", "minimum": 0, "default": 0 },
+          "connectedAt": { "type": "string", "format": "date-time" },
+          "lastActivity": { "type": "string", "format": "date-time" }
+        }
+      },
+      "faults": {
+        "name": "Fault Injection Configuration",
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "id": { "type": "string" },
+            "type": {
+              "type": "string",
+              "enum": ["dtc", "sensor", "timing", "protocol", "nrc"]
+            },
+            "enabled": { "type": "boolean", "default": false },
+            "condition": { "type": "object", "description": "When to trigger" },
+            "action": {
+              "type": "object",
+              "description": "What fault to inject"
+            },
+            "probability": { "type": "number", "minimum": 0, "maximum": 1 }
+          }
+        }
+      }
+    },
+    "transactions": {
+      "acidity": "Eventual consistency (in-memory with atomic operations)",
+      "isolation": "Single-threaded JavaScript event loop",
+      "durability": "None (volatile memory), planned persistence",
+      "atomicOperations": [
+        "DTC updates",
+        "Security state transitions",
+        "Session transitions"
+      ]
+    },
+    "migrations": {
+      "currentVersion": "1.0",
+      "strategy": "Schema-on-read with versioning",
+      "plannedMigrations": [
+        "v1.1: Add session history to DTC records",
+        "v1.2: Add OEM profile specific fields",
+        "v2.0: Persistent storage (SQLite) with schema definition"
+      ]
+    },
+    "backupAndRecovery": {
+      "current": "None (ephemeral)",
+      "planned": [
+        "State snapshots",
+        "Export/import JSON",
+        "WAL logs for SQLite"
+      ]
+    },
+    "performance": {
+      "expectedCapacity": {
+        "dtcs": "Thousands (limited by memory)",
+        "dids": "Hundreds (static definitions)",
+        "requestsPerSecond": "1000+ (CPU bound)",
+        "concurrentConnections": "10+ (TCP)"
+      },
+      "bottlenecks": [
+        "Single-threaded event loop",
+        "In-memory storage limits",
+        "Serial I/O blocking"
+      ],
+      "optimizations": [
+        "Map-based O(1) lookups",
+        "Pre-allocated buffers",
+        "Async I/O operations"
+      ]
+    },
+    "buildDate": "2026-04-30T15:11:22+07:00",
+    "documentVersion": "1.0"
+  }
+}

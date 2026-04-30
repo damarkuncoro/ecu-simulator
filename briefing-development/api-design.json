@@ -1,0 +1,385 @@
+{
+  "apiDesign": {
+    "overview": {
+      "protocols": ["KWP2000", "ISO9141", "UDS (planned)", "CAN (planned)"],
+      "transportLayers": ["TCP", "Serial", "WebSocket (planned)"],
+      "style": "ISO Standard Diagnostic Protocols with OEM extensions"
+    },
+    "kwp2000": {
+      "standard": "ISO 14230-3/4",
+      "transport": "ISO-TP over K-Line or CAN",
+      "format": {
+        "header": "Optional 1-3 bytes (format byte, target/source addresses)",
+        "length": "1 byte - number of additional bytes (including service ID)",
+        "data": "Service ID + parameters",
+        "checksum": "1 byte - XOR of all previous bytes (optional in ISO 14230-4)"
+      },
+      "services": {
+        "0x10": {
+          "name": "DiagnosticSessionControl",
+          "description": "Select diagnostic session",
+          "direction": "bidirectional",
+          "parameters": {"sessionType": "uint8"},
+          "responses": {
+            "positive": "0x50 [sessionType] [P2serverMax] [P2*serverMax] [SCM supported]...",
+            "negative": "0x7F 0x10 [NRC]"
+          },
+          "nrcCodes": ["0x13", "0x22", "0x31", "0x78", "0x7E", "0x81"]
+        },
+        "0x11": {
+          "name": "ECUReset",
+          "description": "Reset ECU",
+          "direction": "bidirectional",
+          "parameters": {"resetType": "uint8 (1=hard, 2=soft, 3=enable rapid power down)"},
+          "responses": {
+            "positive": "0x51 [resetType]",
+            "negative": "0x7F 0x11 [NRC]"
+          },
+          "nrcCodes": ["0x11", "0x12", "0x22", "0x31", "0x78", "0x82"]
+        },
+        "0x14": {
+          "name": "ClearDiagnosticInformation",
+          "description": "Clear DTCs",
+          "direction": "bidirectional",
+          "parameters": {"groupOfDTC": "uint24 (3 bytes, 0xFFFFFF = all)"},
+          "responses": {
+            "positive": "0x54",
+            "negative": "0x7F 0x14 [NRC]"
+          },
+          "nrcCodes": ["0x13", "0x22", "0x31", "0x78", "0x7F"]
+        },
+        "0x19": {
+          "name": "ReadDTCInformation",
+          "description": "Read DTCs with various filters",
+          "direction": "bidirectional",
+          "subFunctions": {
+            "0x01": "reportNumberOfDTCByStatusMask",
+            "0x02": "reportDTCByStatusMask",
+            "0x03": "reportDTCSnapshotIdentification",
+            "0x04": "reportDTCSnapshotRecordByDTCNumber",
+            "0x05": "reportDTCSnapshotRecordByRecordNumber",
+            "0x06": "reportDTCExtendedDataRecordByDTCNumber",
+            "0x07": "reportNumberOfDTCBySeverityMaskRecord",
+            "0x08": "reportDTCBySeverityMaskRecord",
+            "0x09": "reportSeverityInformationOfDTC",
+            "0x0A": "reportSupportedDTCs",
+            "0x0B": "reportFirstTestFailedDTC",
+            "0x0C": "reportFirstConfirmedDTC",
+            "0x0D": "reportMostRecentTestFailedDTC",
+            "0x0E": "reportMostRecentConfirmedDTC",
+            "0x0F": "reportMirrorOfDTCMemoryByStatusMask",
+            "0x10": "reportNumberOfDTCBySeverityMaskRecord",
+            "0x11": "reportNumberOfMirrorMemoryDTCByStatusMask",
+            "0x12": "reportNumberOfEmitsRelatedDTCByStatusMask",
+            "0x13": "reportEmitsRelatedDTCByStatusMask",
+            "0x14": "reportWIRecordByDTCNumber",
+            "0x15": "reportDTCBySeverityMaskRecord",
+            "0x16": "reportDTCExtDataRecordByDTCNumber",
+            "0x17": "reportAllDTCExtDataRecord",
+            "0x18": "reportMirrorOfDTCExtDataRecordByDTCNumber",
+            "0x19": "reportAllMirrorMemoryDTCExtDataRecord",
+            "0x1A": "reportSupportedDTCExtDataRecord"
+          },
+          "parameters": {"reportType": "uint8", "additionalParameters": "variable"},
+          "responses": {
+            "positive": "0x59 [reportType] [DTC data...]",
+            "negative": "0x7F 0x19 [NRC]"
+          },
+          "nrcCodes": ["0x13", "0x22", "0x24", "0x31", "0x33", "0x78", "0x7E", "0x83", "0x84", "0x85"]
+        },
+        "0x22": {
+          "name": "ReadDataByIdentifier",
+          "description": "Read a DID value",
+          "direction": "bidirectional",
+          "parameters": {"did": "uint16"},
+          "responses": {
+            "positive": "0x62 [did] [value...]",
+            "negative": "0x7F 0x22 [NRC]"
+          },
+          "nrcCodes": ["0x13", "0x22", "0x31", "0x33", "0x78", "0x7E", "0x83"]
+        },
+        "0x27": {
+          "name": "SecurityAccess",
+          "description": "Request seed or send key for security access",
+          "direction": "bidirectional",
+          "subFunctions": {
+            "0x01": "requestSeedLevel1",
+            "0x02": "sendKeyLevel1",
+            "0x03": "requestSeedLevel2",
+            "0x04": "sendKeyLevel2",
+            "0x05": "requestSeedLevel3",
+            "0x06": "sendKeyLevel3"
+          },
+          "parameters": {"level": "uint8 (odd=request seed, even=send key)"},
+          "responses": {
+            "positive": "0x67 [seed (when requesting)] OR [] (when sending key)",
+            "negative": "0x7F 0x27 [NRC]"
+          },
+          "nrcCodes": ["0x13", "0x22", "0x24", "0x31", "0x33", "0x35", "0x36", "0x78", "0x7E", "0x84", "0x85"]
+        },
+        "0x28": {
+          "name": "CommunicationControl",
+          "description": "Enable/disable normal communication messages",
+          "direction": "bidirectional",
+          "parameters": {"controlType": "uint8", "communicationType": "uint8"},
+          "responses": {
+            "positive": "0x68",
+            "negative": "0x7F 0x28 [NRC]"
+          },
+          "nrcCodes": ["0x13", "0x22", "0x31", "0x78", "0x7F"]
+        },
+        "0x2E": {
+          "name": "WriteDataByIdentifier",
+          "description": "Write a DID value",
+          "direction": "bidirectional",
+          "parameters": {"did": "uint16", "value": "variable"},
+          "responses": {
+            "positive": "0x6E [did]",
+            "negative": "0x7F 0x2E [NRC]"
+          },
+          "nrcCodes": ["0x13", "0x22", "0x31", "0x33", "0x78", "0x7E", "0x83", "0x84"]
+        },
+        "0x2F": {
+          "name": "InputOutputControlByIdentifier",
+          "description": "Control an input or output",
+          "direction": "bidirectional",
+          "parameters": {"did": "uint16", "controlOption": "uint8", "data": "variable"},
+          "responses": {
+            "positive": "0x6F [did] [controlOption] [data...]",
+            "negative": "0x7F 0x2F [NRC]"
+          },
+          "nrcCodes": ["0x13", "0x22", "0x31", "0x33", "0x78", "0x7E", "0x83", "0x84"]
+        },
+        "0x3E": {
+          "name": "TesterPresent",
+          "description": "Maintain diagnostic session",
+          "direction": "bidirectional",
+          "parameters": {"subFunction": "uint8 (0x00 = no response needed)"},
+          "responses": {
+            "positive": "0x7E [subFunction]",
+            "negative": "0x7F 0x3E [NRC]"
+          },
+          "nrcCodes": ["0x13", "0x22", "0x24", "0x31", "0x78", "0x7E", "0x81"]
+        }
+      },
+      "negativeResponseCodes": {
+        "0x00": "positiveResponse",
+        "0x10": "generalReject",
+        "0x11": "serviceNotSupported",
+        "0x12": "subFunctionNotSupportedInActiveSession",
+        "0x13": "incorrectMessageLengthOrInvalidFormat",
+        "0x21": "busyRepeatRequest (responsePending 0x78)",
+        "0x22": "conditionsNotCorrectOrRequestSequenceError",
+        "0x24": "requestSequenceError",
+        "0x31": "requestOutOfRange",
+        "0x33": "securityAccessDenied",
+        "0x35": "invalidKey",
+        "0x36": "exceedNumberOfAttempts",
+        "0x37": "requiredTimeDelayNotExpired",
+        "0x78": "requestCorrectlyReceived-ResponsePending",
+        "0x7E": "subFunctionNotSupportedInActiveSession",
+        "0x7F": "serviceNotSupported",
+        "0x81": "serviceNotSupportedInActiveDiagnosticSession",
+        "0x82": "serviceNotSupportedInActiveSecurityAccessLevel",
+        "0x83": "RPM too high",
+        "0x84": "RPM too low",
+        "0x85": "engine is running",
+        "0x86": "engine is not running",
+        "0x87": "engine run time too low"
+      }
+    },
+    "iso9141": {
+      "standard": "ISO 9141-2",
+      "physical": {
+        "line": "K-Line (single wire bidirectional)",
+        "baudRate": "10400 bps (standard)",
+        "voltage": "12V (K-Line), 5V system",
+        "pullup": "1.4kΩ to 5V (ECU side)"
+      },
+      "initialization": {
+        "method": "5-baud initialization (keyword 0x33)",
+        "steps": [
+          "1. ECU sets K-Line low for 25-50ms (wakeup)",
+          "2. Tester sends 0x33 at 5 baud (200ms per bit)",
+          "3. ECU responds with 0x55 (sync)",
+          "4. ECU sends key bytes (0x08, 0x08, 0x08, 0x08 or variant)",
+          "5. Tester sends complement byte (0xF7)",
+          "6. Communication established at 10400 baud"
+        ],
+        "timing": {
+          "wakeupDuration": "25-50ms",
+          "bitTime5Baud": "200ms",
+          "syncTimeout": "300ms"
+        }
+      },
+      "messageFormat": {
+        "header": "[targetAddress] [sourceAddress] [additionalLength]",
+        "data": "[serviceId] [parameters...]",
+        "checksum": "1 byte - sum of all bytes modulo 256, inverted (0x100 - sum)",
+        "interByteGap": "5-20ms (P1)",
+        "maxMessageLength": "255 bytes (including header)"
+      },
+      "addresses": {
+        "tester": "0xF1",
+        "ecu": {
+          "generic": "0x10",
+          "engine": "0x10",
+          "transmission": "0x18",
+          "abs": "0x720",
+          "airbag": "0x730"
+        }
+      }
+    },
+    "uds": {
+      "standard": "ISO 14229-1 (2020)",
+      "description": "Unified Diagnostic Services - successor to KWP2000",
+      "services": 27,
+      "transport": "ISO-TP (ISO 15765-2)",
+      "plannedImplementation": "Q4 2026"
+    },
+    "transportApi": {
+      "interface": "ITransport",
+      "methods": {
+        "connect()": "Promise<void> - Establish connection",
+        "disconnect()": "Promise<void> - Close connection",
+        "send(data: Buffer): Promise<void> - Send raw data",
+        "read(expectedBytes: number, timeoutMs?: number): Promise<Buffer> - Read with timeout",
+        "on(event, listener): Unsubscribe - Subscribe to events"
+      },
+      "events": {
+        "connected": "Transport connection established",
+        "disconnected": "Transport connection closed",
+        "data": "Raw data received",
+        "error": "Transport error occurred"
+      },
+      "errors": {
+        "TransportTimeoutError": "Operation timed out",
+        "TransportNotConnectedError": "Attempted operation while disconnected",
+        "TransportError": "General transport error"
+      }
+    },
+    "protocolApi": {
+      "interface": "IProtocol",
+      "methods": {
+        "initialize()": "Promise<void> - Initialize protocol stack",
+        "sendRequest(serviceId, params): Promise<Buffer> - Send diagnostic request",
+        "registerServiceHandler(serviceId, handler): void - Register service handler",
+        "getSession(): SessionState - Get current session state"
+      },
+      "features": [
+        "Automatic NRC generation",
+        "Session validation",
+        "Security access enforcement",
+        "Timing parameter application"
+      ]
+    },
+    "serviceApi": {
+      "dtcEngine": {
+        "interface": "IDtcService",
+        "methods": {
+          "getDtcCount(mask): number",
+          "getDtcs(mask): DTC[]",
+          "setDtc(code, status, description): void",
+          "clearDtc(mask): number - returns count cleared",
+          "encodeStatus(status): number",
+          "decodeStatus(byte): Status"
+        }
+      },
+      "didRegistry": {
+        "interface": "IDidService",
+        "methods": {
+          "registerDid(id, definition): void",
+          "readDid(id): any",
+          "writeDid(id, value): void",
+          "getDidDefinition(id): DidDefinition",
+          "listDids(filter): DidDefinition[]"
+        }
+      },
+      "securityEngine": {
+        "interface": "ISecurityService",
+        "methods": {
+          "requestSeed(level): {seed, level}",
+          "validateKey(level, key): boolean",
+          "getLevel(): number",
+          "isUnlocked(): boolean",
+          "reset(): void"
+        }
+      }
+    },
+    "nrcMapping": {
+      "byCondition": {
+        "incorrectFormat": "0x13",
+        "serviceNotSupported": "0x11",
+        "conditionsNotCorrect": "0x22",
+        "requestOutOfRange": "0x31",
+        "securityAccessDenied": "0x33",
+        "invalidKey": "0x35",
+        "responsePending": "0x78"
+      },
+      "byService": {
+        "0x10": ["0x7E", "0x81"],
+        "0x11": ["0x82"],
+        "0x27": ["0x35", "0x36"],
+        "0x2E": ["0x31", "0x33", "0x83", "0x84"]
+      }
+    },
+    "examples": {
+      "readEngineRpm": {
+        "protocol": "KWP2000",
+        "service": "0x22",
+        "did": "0x0C00",
+        "request": "0x22 0x0C 0x00",
+        "response": "0x62 0x0C 0x00 0x0F A0",
+        "value": "4000 RPM"
+      },
+      "readDtc": {
+        "protocol": "KWP2000",
+        "service": "0x19",
+        "subFunction": "0x02",
+        "request": "0x19 0x02 0xFF",
+        "response": "0x59 0x02 0x01 0x03 0x00 0xC0",
+        "dtc": "P0300 - Random/Multiple Cylinder Misfire"
+      },
+      "securityAccess": {
+        "protocol": "KWP2000",
+        "service": "0x27",
+        "step1": "0x27 0x01",
+        "response1": "0x67 0x01 0x12 0x34 0x56 0x78",
+        "step2": "0x27 0x02 0xAB 0xCD 0xEF 0x01",
+        "response2": "0x67 0x02"
+      },
+      "clearDtc": {
+        "protocol": "KWP2000",
+        "service": "0x14",
+        "request": "0x14 0xFF 0xFF 0xFF",
+        "response": "0x54",
+        "result": "All DTCs cleared"
+      }
+    },
+    "limitations": {
+      "current": [
+        "No payload length > 4096 bytes",
+        "No streaming data support",
+        "Single session per transport connection",
+        "No concurrent session support"
+      ],
+      "plannedImprovements": [
+        "ISO-TP multi-frame support",
+        "Payload compression",
+        "Session multiplexing",
+        "Authentication and encryption"
+      ]
+    },
+    "versioning": {
+      "apiVersion": "1.0",
+      "protocolVersions": {
+        "KWP2000": "ISO 14230-4:2000",
+        "ISO9141": "ISO 9141-2:1994",
+        "UDS": "ISO 14229-1:2020 (planned)"
+      },
+      "compatibility": "Backwards compatible within major version"
+    },
+    "buildDate": "2026-04-30T15:11:22+07:00",
+    "documentVersion": "1.0"
+  }
+}

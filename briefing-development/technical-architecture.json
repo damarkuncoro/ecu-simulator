@@ -1,0 +1,233 @@
+{
+  "architecture": {
+    "style": "Modular Monolith (Monorepo)",
+    "pattern": "Layered Architecture + Plugin-based Services",
+    "approach": "Domain-Driven Design with clear bounded contexts"
+  },
+  "layers": {
+    "applications": {
+      "description": "Consumer applications and entry points",
+      "packages": [
+        {
+          "name": "@ecu/cli-diag",
+          "type": "CLI Application",
+          "description": "Command-line diagnostic tool",
+          "status": "Operational (stub integration)"
+        },
+        {
+          "name": "@ecu/desktop-ui",
+          "type": "Desktop GUI",
+          "description": "Electron + React dashboard",
+          "status": "Roadmap"
+        },
+        {
+          "name": "@ecu/cloud-gateway",
+          "type": "WebSocket Bridge",
+          "description": "Remote access for testing",
+          "status": "Planned"
+        }
+      ]
+    },
+    "protocols": {
+      "description": "Communication protocol implementations",
+      "packages": [
+        {
+          "name": "@ecu/iso9141",
+          "description": "K-Line physical layer, 5-baud init, byte-level framing",
+          "standards": ["ISO 9141-2", "ISO 14230-2"],
+          "status": "Planned"
+        },
+        {
+          "name": "@ecu/kwp2000",
+          "description": "ISO 14230 framing + service router (0x10, 0x19, 0x22, 0x27, 0x2E...)",
+          "standards": ["ISO 14230-3", "ISO 14230-4"],
+          "status": "Planned"
+        },
+        {
+          "name": "@ecu/uds",
+          "description": "Unified Diagnostic Services (ISO 14229)",
+          "standards": ["ISO 14229-1"],
+          "status": "Roadmap"
+        },
+        {
+          "name": "@ecu/can",
+          "description": "ISO 15765 CAN Transport Layer",
+          "standards": ["ISO 15765-2", "ISO 15765-3"],
+          "status": "Roadmap"
+        }
+      ]
+    },
+    "services": {
+      "description": "Core diagnostic service engines",
+      "packages": [
+        {
+          "name": "@ecu/dtc-engine",
+          "description": "SAE J2012 / ISO 15031-6 DTC management",
+          "status": "Operational",
+          "features": [
+            "DTC storage",
+            "Status byte encoding",
+            "Occurrence tracking",
+            "Category classification"
+          ]
+        },
+        {
+          "name": "@ecu/did-registry",
+          "description": "Typed DID store with validation and read/write handlers",
+          "status": "Planned"
+        },
+        {
+          "name": "@ecu/security-engine",
+          "description": "Seed/key algorithm + OEM plugin framework for security access",
+          "status": "Planned"
+        },
+        {
+          "name": "@ecu/session-fsm",
+          "description": "XState-based diagnostic session state machine",
+          "status": "Planned"
+        }
+      ]
+    },
+    "core": {
+      "description": "Virtual ECU kernel and simulation engines",
+      "packages": [
+        {
+          "name": "@ecu/ecu-kernel",
+          "description": "Virtual ECU state machine (diagnostic sessions, security states, power modes)",
+          "status": "Planned"
+        },
+        {
+          "name": "@ecu/timing-engine",
+          "description": "P1/P2/P3/P4 timing simulation + Gaussian jitter",
+          "status": "Planned"
+        },
+        {
+          "name": "@ecu/fault-injector",
+          "description": "DTC/sensor/timing/protocol fault injection for testing",
+          "status": "Planned"
+        }
+      ]
+    },
+    "transport": {
+      "description": "Physical and virtual transport layers",
+      "packages": [
+        {
+          "name": "@ecu/transport-abstract",
+          "description": "ITransport interface + factory pattern",
+          "status": "Operational",
+          "interfaces": ["connect", "disconnect", "send", "read", "on events"]
+        },
+        {
+          "name": "@ecu/transport-tcp",
+          "description": "TCP socket transport (dev/CI/cloud)",
+          "status": "Operational",
+          "features": [
+            "Async socket I/O",
+            "Buffered reads",
+            "Timeout handling",
+            "Connection stats"
+          ]
+        },
+        {
+          "name": "@ecu/transport-serial",
+          "description": "node-serialport K-Line with 5-baud init",
+          "status": "Planned"
+        },
+        {
+          "name": "@ecu/transport-ws",
+          "description": "WebSocket transport for UI / remote access",
+          "status": "Planned"
+        }
+      ]
+    },
+    "utils": {
+      "description": "Shared utilities and helpers",
+      "packages": [
+        {
+          "name": "@ecu/checksum",
+          "description": "ISO 14230 XOR + CRC calculators",
+          "status": "Planned"
+        },
+        {
+          "name": "@ecu/logger",
+          "description": "Structured logging + PCAP export",
+          "status": "Planned"
+        },
+        {
+          "name": "@ecu/test-helpers",
+          "description": "Jest utilities + scenario builders",
+          "status": "Planned"
+        }
+      ]
+    }
+  },
+  "communication": {
+    "intraPackage": "TypeScript module imports within monorepo",
+    "interPackage": "pnpm workspace protocol (^@ecu/...)",
+    "external": "Standard npm packages (serialport, xstate, etc.)"
+  },
+  "buildPipeline": {
+    "tool": "Turborepo",
+    "strategy": "Incremental builds with remote caching",
+    "workflows": [
+      "dev: turbo run dev --parallel",
+      "build: turbo run build",
+      "test: turbo run test",
+      "lint: turbo run lint",
+      "typecheck: turbo run typecheck"
+    ]
+  },
+  "deployment": {
+    "environments": [
+      "Development (TCP)",
+      "CI/CD (TCP Docker)",
+      "HIL (Serial)",
+      "Production (Serial + Cloud Gateway)"
+    ],
+    "docker": "docker-compose with multi-service setup (virtual-ecu, cloud-gateway, test-runner)"
+  },
+  "architecturalDecisions": [
+    {
+      "decision": "Monorepo with Turborepo",
+      "rationale": "Enables independent development of packages with shared tooling, incremental builds, and simplified dependency management",
+      "alternatives": ["Single package", "Multi-repo"],
+      "consequences": [
+        "Faster iteration",
+        "Shared types across packages",
+        "Complex CI/CD setup"
+      ]
+    },
+    {
+      "decision": "Abstract transport layer with factory",
+      "rationale": "Enables pluggable physical media (TCP, Serial, WebSocket) without changing protocol code",
+      "alternatives": ["Hardcoded transport", "Dependency injection container"],
+      "consequences": [
+        "Easy testing with TCP",
+        "Seamless HIL transition",
+        "Additional abstraction overhead"
+      ]
+    },
+    {
+      "decision": "TypeScript across all packages",
+      "rationale": "Type safety for protocol implementations, shared interfaces, and developer experience",
+      "alternatives": ["JavaScript", "Mixed languages"],
+      "consequences": [
+        "Compile-time validation",
+        "Learning curve",
+        "Build step required"
+      ]
+    },
+    {
+      "decision": "XState for session FSM",
+      "rationale": "Declarative state machine with visualization, history, and type generation",
+      "alternatives": ["Hand-rolled state machine", "Third-party FSM library"],
+      "consequences": [
+        "Clear state transitions",
+        "Additional dependency",
+        "Visual debugging support"
+      ]
+    }
+  ],
+  "buildDate": "2026-04-30T15:11:22+07:00",
+  "documentVersion": "1.0"
+}

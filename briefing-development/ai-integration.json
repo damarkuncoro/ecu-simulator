@@ -1,0 +1,339 @@
+{
+  "aiIntegration": {
+    "overview": {
+      "status": "Planned (P3 priority)",
+      "targetTimeline": "Q1 2027",
+      "description": "AI-powered fault prediction, diagnostic assistance, and automated testing layer built on top of the ECU simulation core",
+      "integrationPattern": "Layered AI services consuming ECU telemetry and providing predictions/suggestions to diagnostic tools"
+    },
+    "components": {
+      "faultPredictionEngine": {
+        "role": "Predict potential ECU faults based on telemetry patterns",
+        "type": "Time-series anomaly detection",
+        "architecture": {
+          "input": "Live ECU telemetry (DID values, timing, error rates)",
+          "model": "LSTM/Transformer hybrid for sequence prediction",
+          "output": "Fault probability scores, predicted failure modes, recommended actions"
+        },
+        "features": [
+          "Real-time anomaly detection on sensor streams",
+          "Pattern matching against historical fault signatures",
+          "Proactive DTC prediction before confirmation",
+          "Degradation trend analysis",
+          "Confidence-scored predictions"
+        ],
+        "trainingData": {
+          "sources": [
+            "Simulated fault injection data",
+            "Historical DTC patterns",
+            "Sensor value time-series from real vehicles",
+            "OBD-II log files",
+            "Known failure modes and sequences"
+          ],
+          "generation": "Automated scenario generation via fault injector",
+          "syntheticData": "Enhanced real data with simulated edge cases"
+        },
+        "modelTypes": [
+          {
+            "name": "LSTM Autoencoder",
+            "purpose": "Unsupervised anomaly detection on sensor sequences",
+            "input": "Window of last N sensor readings",
+            "output": "Reconstruction error (anomaly score)"
+          },
+          {
+            "name": "Transformer-based Fault Classifier",
+            "purpose": "Multi-class fault prediction from symptom patterns",
+            "input": "Sequence of DIDs, DTCs, timing data",
+            "output": "Probability distribution over fault types"
+          },
+          {
+            "name": "Graph Neural Network",
+            "purpose": "Model ECU component relationships and fault propagation",
+            "input": "Component dependency graph + state",
+            "output": "Cascading failure predictions"
+          }
+        ]
+      },
+      "diagnosticAssistant": {
+        "role": "AI-powered diagnostic recommendation system",
+        "type": "Retrieval-Augmented Generation (RAG) + Rule-based reasoning",
+        "architecture": {
+          "knowledgeBase": "Vector database of repair manuals, TSBs, known fixes",
+          "reasoningEngine": "Rule-based diagnostic tree traversal",
+          "llmInterface": "Local LLM for natural language explanations",
+          "output": "Step-by-step diagnostic procedures with confidence scores"
+        },
+        "features": [
+          "Natural language query interface for diagnostics",
+          "Retrieval of relevant TSBs and repair procedures",
+          "Next-step suggestions based on current symptoms",
+          "DTC interpretation with context",
+          "Probable cause ranking",
+          "Repair procedure generation"
+        ],
+        "workflow": [
+          "1. Receive current ECU state (DTCs, DIDs, symptoms)",
+          "2. Query vector DB for similar historical cases",
+          "3. Run rule-based diagnostic tree",
+          "4. Generate ranked list of probable causes",
+          "5. Suggest next diagnostic steps",
+          "6. Provide repair procedure with estimated difficulty/time"
+        ],
+        "knowledgeSources": [
+          "OEM service manuals",
+          "Technical Service Bulletins (TSBs)",
+          "Repair database (Mitchell1, AllData)",
+          "Community repair forums",
+          "Historical repair records"
+        ]
+      },
+      "automatedTestGenerator": {
+        "role": "Generate comprehensive test scenarios from specifications",
+        "type": "LLM-based test case generation + coverage optimization",
+        "architecture": {
+          "specParser": "Parse protocol specifications and OEM profiles",
+          "testGenerator": "LLM to generate edge cases and test scenarios",
+          "coverageAnalyzer": "Track code/protocol coverage",
+          "scenarioOptimizer": "Minimize test suite while maximizing coverage"
+        },
+        "features": [
+          "Automatic test case generation from protocol specs",
+          "Edge case and boundary value test generation",
+          "Mutation testing (generate tests to break the system)",
+          "Coverage-guided test suite optimization",
+          "Regression test selection",
+          "Fuzzing test generation for protocol robustness"
+        ],
+        "testTypes": [
+          {
+            "name": "Protocol Fuzzing",
+            "description": "Generate malformed messages to test error handling"
+          },
+          {
+            "name": "Boundary Testing",
+            "description": "Test edge cases for DID ranges, timing parameters"
+          },
+          {
+            "name": "State Space Exploration",
+            "description": "Generate tests to explore all session/security state combinations"
+          },
+          {
+            "name": "Regression Testing",
+            "description": "Select minimal test set covering changed components"
+          }
+        ]
+      },
+      "telemetryAnomalyDetector": {
+        "role": "Real-time monitoring of ECU behavior during test execution",
+        "type": "Online anomaly detection",
+        "architecture": {
+          "streamProcessor": "Real-time processing of telemetry streams",
+          "statisticalModels": "Baseline behavior models per ECU profile",
+          "alertEngine": "Threshold and pattern-based alerting",
+          "dashboard": "Visualization of anomalies and trends"
+        },
+        "features": [
+          "Real-time metric tracking (P1-P4 timing, error rates, DTC rates)",
+          "Baseline deviation detection",
+          "Correlation analysis across multiple ECUs",
+          "Performance regression detection",
+          "Trend analysis and forecasting"
+        ],
+        "metrics": [
+          "Response time distributions (P1-P4)",
+          "DTC occurrence rates",
+          "Protocol error rates",
+          "Security access failure rates",
+          "DID value drift from baseline"
+        ]
+      },
+      "predictiveMaintenanceScheduler": {
+        "role": "Predict when test scenarios or ECU components need attention",
+        "type": "Time-series forecasting + survival analysis",
+        "features": [
+          "Predict test flakiness based on historical patterns",
+          "Schedule maintenance of test hardware (HIL rigs)",
+          "Forecast ECU failure in production vehicles",
+          "Optimize test suite scheduling for CI/CD"
+        ]
+      }
+    },
+    "mlStack": {
+      "frameworks": ["PyTorch", "TensorFlow", "scikit-learn", "ONNX Runtime"],
+      "deployment": [
+        "TorchServe",
+        "ONNX",
+        "TensorFlow Serving",
+        "Local LLM (llama.cpp)"
+      ],
+      "vectorDb": ["Pinecone", "Weaviate", "Qdrant", "Chroma"],
+      "dataPipeline": ["Apache Kafka", "Redis Streams", "Delta Lake"],
+      "monitoring": ["MLflow", "Weights & Biases", "Prometheus", "Grafana"]
+    },
+    "integrationPoints": {
+      "ecuSimulator": {
+        "interface": "gRPC / REST API",
+        "data": "Telemetry stream (DIDs, DTCs, timing, errors)",
+        "purpose": "Feed real-time data to AI models"
+      },
+      "faultInjector": {
+        "interface": "REST API",
+        "data": "Fault scenarios, ground truth labels",
+        "purpose": "Generate training data, validate predictions"
+      },
+      "testRunner": {
+        "interface": "REST API / CLI",
+        "data": "Test results, coverage metrics",
+        "purpose": "Feedback loop for test generation"
+      },
+      "diagnosticTool": {
+        "interface": "WebSocket / REST",
+        "data": "User queries, diagnostic context",
+        "purpose": "Provide AI-assisted recommendations"
+      }
+    },
+    "dataFlow": {
+      "trainingPhase": [
+        "1. Collect labeled historical data (DTCs, repairs, sensor logs)",
+        "2. Generate synthetic fault data via fault injector",
+        "3. Preprocess and feature engineer",
+        "4. Train models (anomaly detection, classification, prediction)",
+        "5. Validate against holdout test sets",
+        "6. Deploy models to serving infrastructure"
+      ],
+      "inferencePhase": [
+        "1. Stream telemetry from running ECU simulator",
+        "2. Extract features in real-time",
+        "3. Run inference on anomaly detection models",
+        "4. Generate alerts/recommendations for anomalies",
+        "5. Update diagnostic assistant knowledge base",
+        "6. Log predictions and outcomes for model improvement"
+      ]
+    },
+    "apis": {
+      "faultPrediction": {
+        "endpoint": "POST /api/v1/ai/predict-fault",
+        "request": { "telemetryWindow": "array", "context": "object" },
+        "response": {
+          "predictions": [
+            {
+              "faultType": "string",
+              "probability": "float",
+              "confidence": "float",
+              "recommendedActions": ["string"]
+            }
+          ]
+        }
+      },
+      "diagnosticAssist": {
+        "endpoint": "POST /api/v1/ai/diagnose",
+        "request": {
+          "dtcs": ["array"],
+          "symptoms": ["array"],
+          "dids": "object"
+        },
+        "response": {
+          "possibleCauses": [
+            {
+              "cause": "string",
+              "probability": "float",
+              "steps": ["string"],
+              "references": ["string"]
+            }
+          ]
+        }
+      },
+      "generateTests": {
+        "endpoint": "POST /api/v1/ai/generate-tests",
+        "request": { "specification": "string", "coverageGoals": "object" },
+        "response": {
+          "testCases": [
+            {
+              "id": "string",
+              "description": "string",
+              "steps": ["object"],
+              "expectedResults": ["object"]
+            }
+          ]
+        }
+      },
+      "anomalyDetection": {
+        "endpoint": "POST /api/v1/ai/detect-anomaly",
+        "request": { "metricStream": "array", "baselineId": "string" },
+        "response": {
+          "anomalies": [
+            {
+              "timestamp": "string",
+              "metric": "string",
+              "severity": "float",
+              "deviation": "float"
+            }
+          ]
+        }
+      }
+    },
+    "securityAndPrivacy": {
+      "measures": [
+        "Model encryption at rest",
+        "Secure model serving (TLS, authentication)",
+        "Data anonymization for training",
+        "GDPR compliance for EU vehicle data",
+        "Access control for sensitive predictions",
+        "Audit logging for all AI decisions"
+      ],
+      "considerations": [
+        "Vehicle data is sensitive personal data",
+        "AI recommendations must be explainable",
+        "Model bias detection and mitigation",
+        "Fail-safe fallback to rule-based systems"
+      ]
+    },
+    "deploymentStrategy": {
+      "phase1": "Offline model training and batch predictions",
+      "phase2": "Real-time inference for anomaly detection",
+      "phase3": "Interactive diagnostic assistant in UI",
+      "phase4": "Closed-loop automated test generation"
+    },
+    "evaluationMetrics": {
+      "faultPrediction": {
+        "precision": "Target: >90% for critical faults",
+        "recall": "Target: >85% for all fault types",
+        "mttf": "Mean time to fault prediction",
+        "falsePositiveRate": "Target: <5%"
+      },
+      "diagnosticAssistant": {
+        "accuracy": "Target: >95% correct root cause identification",
+        "timeToDiagnosis": "Target: 50% reduction vs manual",
+        "userSatisfaction": "Target: >4.5/5 rating"
+      },
+      "testGeneration": {
+        "coverage": "Target: >95% branch coverage",
+        "testEfficiency": "Target: 10x reduction in test suite size",
+        "defectDetection": "Target: >80% fault detection rate"
+      }
+    },
+    "challenges": [
+      "Limited labeled fault data initially",
+      "Need for domain expertise in feature engineering",
+      "Real-time inference latency requirements",
+      "Explainability of AI decisions for technicians",
+      "Integration complexity with legacy diagnostic tools",
+      "Data privacy and regulatory compliance"
+    ],
+    "dependencies": [
+      "Mature fault injection for training data generation",
+      "Comprehensive telemetry collection infrastructure",
+      "Stable core ECU simulator for reproducible testing",
+      "User feedback loop for continuous improvement"
+    ],
+    "timeline": {
+      "Q4_2026": "Prototype fault prediction models (offline)",
+      "Q1_2027": "Telemetry pipeline MVP + basic anomaly detection",
+      "Q2_2027": "Diagnostic assistant beta in desktop UI",
+      "Q3_2027": "Automated test generation for regression suite",
+      "Q4_2027": "Full AI pipeline in production for pilot users"
+    },
+    "buildDate": "2026-04-30T15:11:22+07:00",
+    "documentVersion": "1.0"
+  }
+}

@@ -1,0 +1,481 @@
+{
+  "roadmap": {
+    "project": "ECU Simulator",
+    "currentVersion": "0.1.0",
+    "timeframe": "H2 2026 - Q2 2027",
+    "lastUpdated": "2026-04-30T15:11:22+07:00",
+    "phases": [
+      {
+        "phase": "Phase 1: Core Stabilization",
+        "quarter": "Q2 2026",
+        "status": "In Progress",
+        "priority": "P0",
+        "objectives": [
+          "Complete core transport layer (TCP operational, Serial in progress)",
+          "Stabilize existing packages (DTC engine, logging, utils)",
+          "Implement comprehensive unit test coverage (>80%)",
+          "Establish CI/CD pipeline with automated testing",
+          "Document API interfaces and protocols"
+        ],
+        "deliverables": [
+          {
+            "item": "TCP Transport (operational)",
+            "status": "✓ Complete",
+            "package": "@ecu/transport-tcp"
+          },
+          {
+            "item": "Abstract Transport Layer",
+            "status": "✓ Complete",
+            "package": "@ecu/transport-abstract"
+          },
+          {
+            "item": "DTC Engine",
+            "status": "✓ Complete",
+            "package": "@ecu/dtc-engine"
+          },
+          {
+            "item": "CLI Diagnostic Tool",
+            "status": "In Progress",
+            "package": "@ecu/cli-diag"
+          },
+          {
+            "item": "Virtual Serial Port Setup",
+            "status": "Planned",
+            "package": "tools/scripts"
+          },
+          {
+            "item": "Unit Test Coverage (>80%)",
+            "status": "15%",
+            "package": "All packages"
+          }
+        ],
+        "milestones": [
+          {
+            "date": "2026-04-30",
+            "name": "TCP Transport Operational",
+            "status": "Completed"
+          },
+          {
+            "date": "2026-05-15",
+            "name": "DTC Engine Unit Tests",
+            "status": "In Progress"
+          },
+          {
+            "date": "2026-05-30",
+            "name": "Serial Transport Implementation",
+            "status": "Planned"
+          },
+          {
+            "date": "2026-06-15",
+            "name": "Phase 1 Complete - Core Stabilization",
+            "status": "Target"
+          }
+        ],
+        "dependencies": [],
+        "risks": [
+          "Serial port compatibility across platforms",
+          "Limited test coverage may hide integration bugs"
+        ],
+        "resources": ["1 backend engineer", "1 DevOps engineer"]
+      },
+      {
+        "phase": "Phase 2: Protocol Implementation",
+        "quarter": "Q3 2026",
+        "status": "Planned",
+        "priority": "P0",
+        "objectives": [
+          "Implement KWP2000 protocol stack (ISO 14230-3/4)",
+          "Complete ISO9141 physical layer with 5-baud init",
+          "Implement Serial Transport (K-Line)",
+          "Build Service Router for KWP2000",
+          "Establish session FSM (XState)",
+          "Integration testing with real protocol flows"
+        ],
+        "deliverables": [
+          {
+            "item": "KWP2000 Protocol Router",
+            "status": "Planned",
+            "package": "@ecu/kwp2000"
+          },
+          {
+            "item": "ISO9141 Physical Layer",
+            "status": "Planned",
+            "package": "@ecu/iso9141"
+          },
+          {
+            "item": "Serial Transport (K-Line)",
+            "status": "Planned",
+            "package": "@ecu/transport-serial"
+          },
+          {
+            "item": "Session FSM",
+            "status": "Planned",
+            "package": "@ecu/session-fsm"
+          },
+          {
+            "item": "Service Handlers (0x10, 0x11, 0x14, 0x19, 0x22, 0x27, 0x2E)",
+            "status": "Planned",
+            "package": "@ecu/kwp2000"
+          },
+          {
+            "item": "Integration Test Suite",
+            "status": "Planned",
+            "package": "Integration tests"
+          }
+        ],
+        "milestones": [
+          {
+            "date": "2026-07-15",
+            "name": "KWP2000 Core Services",
+            "status": "Target"
+          },
+          {
+            "date": "2026-08-01",
+            "item": "ISO9141 5-Baud Init",
+            "status": "Target"
+          },
+          {
+            "date": "2026-08-15",
+            "name": "Serial Transport Operational",
+            "status": "Target"
+          },
+          {
+            "date": "2026-09-15",
+            "name": "Phase 2 Complete - Protocol Stack",
+            "status": "Target"
+          }
+        ],
+        "dependencies": [
+          "Phase 1: Core Stabilization (especially transport layer)"
+        ],
+        "risks": [
+          "KWP2000 timing parameters vary by manufacturer",
+          "ISO9141 5-baud init requires precise timing",
+          "Serial port handling differs across OS platforms"
+        ],
+        "resources": [
+          "2 protocol engineers",
+          "1 test engineer",
+          "1 hardware specialist"
+        ]
+      },
+      {
+        "phase": "Phase 3: Service Layer Completion",
+        "quarter": "Q3-Q4 2026",
+        "status": "Planned",
+        "priority": "P1",
+        "objectives": [
+          "Implement DID Registry with typed definitions",
+          "Complete Security Engine (seed/key algorithms)",
+          "Implement Timing Engine (P1/P2/P3/P4 simulation)",
+          "Build Fault Injector for testing",
+          "Create OEM profiles (VAG, Toyota, Honda)",
+          "Develop Desktop UI (Electron + React)"
+        ],
+        "deliverables": [
+          {
+            "item": "DID Registry",
+            "status": "Planned",
+            "package": "@ecu/did-registry"
+          },
+          {
+            "item": "Security Engine",
+            "status": "Planned",
+            "package": "@ecu/security-engine"
+          },
+          {
+            "item": "Timing Engine",
+            "status": "Planned",
+            "package": "@ecu/timing-engine"
+          },
+          {
+            "item": "Fault Injector",
+            "status": "Planned",
+            "package": "@ecu/fault-injector"
+          },
+          {
+            "item": "OEM Profiles (VAG, Toyota, Honda)",
+            "status": "Planned",
+            "package": "tools/oem-profiles"
+          },
+          {
+            "item": "Desktop UI (Alpha)",
+            "status": "Planned",
+            "package": "@ecu/desktop-ui"
+          },
+          {
+            "item": "WebSocket Gateway",
+            "status": "Planned",
+            "package": "@ecu/cloud-gateway"
+          }
+        ],
+        "milestones": [
+          {
+            "date": "2026-09-30",
+            "name": "DID Registry + Security Engine",
+            "status": "Target"
+          },
+          {
+            "date": "2026-10-31",
+            "name": "Timing + Fault Injection",
+            "status": "Target"
+          },
+          {
+            "date": "2026-11-30",
+            "name": "OEM Profiles (3 manufacturers)",
+            "status": "Target"
+          },
+          {
+            "date": "2026-12-15",
+            "name": "Phase 3 Complete - Service Layer",
+            "status": "Target"
+          }
+        ],
+        "dependencies": ["Phase 2: Protocol Implementation"],
+        "risks": [
+          "OEM-specific protocols may require reverse engineering",
+          "Desktop UI requires significant frontend development",
+          "Timing accuracy validation requires oscilloscope access"
+        ],
+        "resources": [
+          "2 full-stack engineers",
+          "1 frontend engineer",
+          "1 test engineer"
+        ]
+      },
+      {
+        "phase": "Phase 4: AI Integration & Automation",
+        "quarter": "Q1 2027",
+        "status": "Roadmap",
+        "priority": "P3",
+        "objectives": [
+          "Implement fault prediction models (LSTM/Transformer)",
+          "Build diagnostic assistant (RAG + LLM)",
+          "Create automated test generator (LLM-based)",
+          "Deploy telemetry pipeline for ML",
+          "Implement anomaly detection on live streams",
+          "Create predictive maintenance scheduler"
+        ],
+        "deliverables": [
+          {
+            "item": "Fault Prediction Engine",
+            "status": "Planned",
+            "package": "AI/ML Service"
+          },
+          {
+            "item": "Diagnostic Assistant",
+            "status": "Planned",
+            "package": "AI/ML Service"
+          },
+          {
+            "item": "Automated Test Generator",
+            "status": "Planned",
+            "package": "AI/ML Service"
+          },
+          {
+            "item": "Telemetry Pipeline",
+            "status": "Planned",
+            "package": "Infrastructure"
+          },
+          {
+            "item": "Anomaly Detection (real-time)",
+            "status": "Planned",
+            "package": "AI/ML Service"
+          }
+        ],
+        "milestones": [
+          {
+            "date": "2026-12-31",
+            "name": "ML Infrastructure Setup",
+            "status": "Target"
+          },
+          {
+            "date": "2027-01-31",
+            "name": "Fault Prediction MVP",
+            "status": "Target"
+          },
+          {
+            "date": "2027-02-28",
+            "name": "Diagnostic Assistant Beta",
+            "status": "Target"
+          },
+          {
+            "date": "2027-03-15",
+            "name": "Phase 4 Complete - AI Integration",
+            "status": "Target"
+          }
+        ],
+        "dependencies": [
+          "Phase 3: Service Layer Completion",
+          "Mature fault injection for training data"
+        ],
+        "risks": [
+          "Limited labeled fault data initially",
+          "ML model performance may not meet targets",
+          "Real-time inference latency requirements",
+          "Integration complexity with core system"
+        ],
+        "resources": ["1 ML engineer", "1 data engineer", "1 backend engineer"]
+      },
+      {
+        "phase": "Phase 5: Production & Scale",
+        "quarter": "Q2 2027",
+        "status": "Roadmap",
+        "priority": "P2",
+        "objectives": [
+          "Kubernetes production deployment",
+          "Multi-region setup for fleet testing",
+          "Advanced CAN (ISO 15765) implementation",
+          "UDS (ISO 14229) full implementation",
+          "Enhanced security (mTLS, OAuth2)",
+          "Performance optimization and benchmarking",
+          "Comprehensive documentation and training"
+        ],
+        "deliverables": [
+          {
+            "item": "Kubernetes Deployment",
+            "status": "Planned",
+            "package": "Infrastructure"
+          },
+          {
+            "item": "CAN Protocol (ISO 15765)",
+            "status": "Planned",
+            "package": "@ecu/can"
+          },
+          {
+            "item": "UDS Protocol (ISO 14229)",
+            "status": "Planned",
+            "package": "@ecu/uds"
+          },
+          {
+            "item": "Enhanced Security (mTLS, OAuth2)",
+            "status": "Planned",
+            "package": "Infrastructure"
+          },
+          {
+            "item": "Performance Benchmarking Suite",
+            "status": "Planned",
+            "package": "Tools"
+          },
+          {
+            "item": "Comprehensive Documentation",
+            "status": "Planned",
+            "package": "docs/"
+          }
+        ],
+        "milestones": [
+          {
+            "date": "2027-04-15",
+            "name": "CAN + UDS Protocols",
+            "status": "Target"
+          },
+          {
+            "date": "2027-04-30",
+            "name": "Kubernetes Production",
+            "status": "Target"
+          },
+          {
+            "date": "2027-05-31",
+            "name": "Enhanced Security",
+            "status": "Target"
+          },
+          {
+            "date": "2027-06-15",
+            "name": "Phase 5 Complete - Production Ready",
+            "status": "Target"
+          }
+        ],
+        "dependencies": ["Phase 3 & 4: Core features and AI integration"],
+        "risks": [
+          "Kubernetes learning curve for team",
+          "Multi-region deployment complexity",
+          "Performance optimization may require architectural changes"
+        ],
+        "resources": ["2 DevOps engineers", "2 backend engineers", "1 SRE"]
+      }
+    ],
+    "dependencies": {
+      "cross_phase": [
+        "Testing infrastructure must be in place before Phase 2",
+        "Telemetry needed for AI training in Phase 4",
+        "Performance baseline established in Phase 1 for future comparison"
+      ],
+      "external": [
+        "Hardware availability for HIL testing (Phase 2)",
+        "OEM documentation access (Phase 3)",
+        "Cloud infrastructure provisioning (Phase 5)"
+      ]
+    },
+    "risks_and_mitigations": [
+      {
+        "risk": "Protocol timing variations across OEMs",
+        "impact": "High",
+        "mitigation": "Implement configurable timing profiles, extensive testing with target vehicles"
+      },
+      {
+        "risk": "Limited test data for AI models",
+        "impact": "Medium",
+        "mitigation": "Aggressive fault injection, synthetic data generation, transfer learning"
+      },
+      {
+        "risk": "Serial port driver issues across platforms",
+        "impact": "Medium",
+        "mitigation": "Use established serialport library, extensive platform testing"
+      },
+      {
+        "risk": "Performance under load",
+        "impact": "Medium",
+        "mitigation": "Load testing in Phase 1, architectural review before Phase 5"
+      },
+      {
+        "risk": "Team expertise in automotive protocols",
+        "impact": "High",
+        "mitigation": "Training, hire domain expert, extensive use of standards documentation"
+      }
+    ],
+    "success_metrics": {
+      "technical": [
+        "Protocol compliance: >99% correct NRC generation",
+        "Timing accuracy: P1-P4 within ±5% of spec",
+        "Test coverage: >80% unit, >60% integration",
+        "Performance: <200ms P99 response time",
+        "Availability: >99.9% uptime in production"
+      ],
+      "business": [
+        "Time to diagnose: 50% reduction vs manual methods",
+        "Test automation: 80% of regression tests automated",
+        "Developer productivity: 3x faster ECU testing",
+        "Customer satisfaction: >4.5/5 rating"
+      ]
+    },
+    "resource_plan": {
+      "team": {
+        "phase1": [
+          "1 backend engineer",
+          "1 DevOps engineer",
+          "0.5 QA engineer"
+        ],
+        "phase2": [
+          "2 protocol engineers",
+          "1 test engineer",
+          "0.5 hardware specialist"
+        ],
+        "phase3": [
+          "2 full-stack engineers",
+          "1 frontend engineer",
+          "1 test engineer"
+        ],
+        "phase4": ["1 ML engineer", "1 data engineer", "1 backend engineer"],
+        "phase5": ["2 DevOps engineers", "2 backend engineers", "1 SRE"]
+      },
+      "budget": {
+        "personnel": "$1.2M - $1.8M over 12 months",
+        "infrastructure": "$50K - $150K (cloud + hardware)",
+        "tools_licenses": "$20K - $50K",
+        "total": "$1.27M - $2.0M"
+      }
+    },
+    "buildDate": "2026-04-30T15:11:22+07:00",
+    "documentVersion": "1.0"
+  }
+}

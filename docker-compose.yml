@@ -1,0 +1,65 @@
+version: '3.9'
+
+services:
+  # ── Virtual ECU (TCP mode) ──────────────────────────────────────────────────
+  virtual-ecu:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.ecu
+    container_name: ecu-simulator
+    ports:
+      - "20000:20000"   # KWP2000 TCP port
+      - "20001:20001"   # UDS TCP port (roadmap)
+    environment:
+      - ECU_TRANSPORT=tcp
+      - ECU_PORT=20000
+      - LOG_LEVEL=debug
+      - ECU_PROFILE=generic   # or vag, toyota, honda
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('net').connect(20000,'localhost',()=>process.exit(0)).on('error',()=>process.exit(1))"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - ecu-net
+
+  # ── Cloud WebSocket Gateway ─────────────────────────────────────────────────
+  cloud-gateway:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.gateway
+    container_name: ecu-gateway
+    ports:
+      - "8080:8080"     # WebSocket for remote UI
+    environment:
+      - GATEWAY_PORT=8080
+      - ECU_HOST=virtual-ecu
+      - ECU_PORT=20000
+      - LOG_LEVEL=info
+    depends_on:
+      virtual-ecu:
+        condition: service_healthy
+    networks:
+      - ecu-net
+
+  # ── CLI Integration Test Runner ─────────────────────────────────────────────
+  test-runner:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.test
+    container_name: ecu-test-runner
+    environment:
+      - ECU_HOST=virtual-ecu
+      - ECU_PORT=20000
+      - ECU_TRANSPORT=tcp
+    depends_on:
+      virtual-ecu:
+        condition: service_healthy
+    networks:
+      - ecu-net
+    profiles:
+      - test   # Only starts with: docker-compose --profile test up
+
+networks:
+  ecu-net:
+    driver: bridge

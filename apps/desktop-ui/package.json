@@ -1,0 +1,16 @@
+{
+  "name": "@ecu/desktop-ui",
+  "version": "0.1.0",
+  "description": "Electron + React diagnostic dashboard",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "ts-node src/index.ts",
+    "start": "node dist/index.js",
+    "test:integration": "jest --testPathPattern=integration",
+    "test:hil": "jest --testPathPattern=hil",
+    "lint": "eslint src --ext .ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "clean": "rm -rf dist"
+  }
+}

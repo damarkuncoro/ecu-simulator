@@ -1,0 +1,96 @@
+name: ECU Simulator CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ── Type Check + Lint ────────────────────────────────────────────────────────
+  quality:
+    name: Type Check & Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+
+  # ── Unit Tests ───────────────────────────────────────────────────────────────
+  unit:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    needs: quality
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run test:unit -- --coverage
+      - uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage/
+
+  # ── Integration Tests (Virtual ECU via Docker) ────────────────────────────────
+  integration:
+    name: Integration Tests (TCP)
+    runs-on: ubuntu-latest
+    needs: quality
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run build
+      - name: Start virtual ECU
+        run: docker-compose up -d virtual-ecu
+      - name: Wait for ECU ready
+        run: |
+          for i in $(seq 1 15); do
+            nc -z localhost 20000 && echo "ECU ready" && exit 0
+            echo "Waiting... ($i/15)"
+            sleep 2
+          done
+          echo "ECU did not start in time" && exit 1
+      - name: Run integration tests
+        run: npm run test:integration
+        env:
+          ECU_TRANSPORT: tcp
+          ECU_HOST: localhost
+          ECU_PORT: 20000
+      - run: docker-compose down
+
+  # ── Hardware-in-Loop (self-hosted runner with K-Line adapter) ─────────────────
+  hil:
+    name: Hardware-in-Loop
+    runs-on: self-hosted
+    needs: integration
+    if: github.ref == 'refs/heads/main'  # HIL only on main branch
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm ci
+      - run: npm run build
+      - name: Run HIL scenarios
+        run: npm run test:hil
+        env:
+          ECU_TRANSPORT: serial
+          ECU_SERIAL_PORT: ${{ vars.HIL_SERIAL_PORT }}
+          ECU_BAUD_RATE: 10400
+        timeout-minutes: 10

@@ -129,16 +129,17 @@ export async function createTransport(
   switch (mode) {
     case "tcp": {
       const { TcpTransport } = await import("@ecu/transport-tcp");
-      return new TcpTransport({
+      const tcpConfig: any = {
         host: config?.host ?? process.env["ECU_HOST"] ?? "127.0.0.1",
         port: config?.port ?? Number(process.env["ECU_PORT"] ?? 20000),
         connectTimeoutMs: config?.connectTimeoutMs ?? 5000,
         readTimeoutMs: config?.readTimeoutMs ?? 2000,
-      });
+      };
+      return new TcpTransport(tcpConfig);
     }
     case "serial": {
       const { SerialTransport } = await import("@ecu/transport-serial");
-      return new SerialTransport({
+      const serialConfig: any = {
         path:
           config?.path ??
           process.env["ECU_SERIAL_PORT"] ??
@@ -149,14 +150,18 @@ export async function createTransport(
           config?.baudRate ?? Number(process.env["ECU_BAUD_RATE"] ?? 10400),
         connectTimeoutMs: config?.connectTimeoutMs ?? 3000,
         readTimeoutMs: config?.readTimeoutMs ?? 2000,
-      });
+      };
+      return new SerialTransport(serialConfig);
     }
     case "websocket": {
       const { WebSocketTransport } = await import("@ecu/transport-ws");
-      return new WebSocketTransport({
+      const wsConfig: any = {
         host: config?.host ?? "localhost",
         port: config?.port ?? 8080,
-      });
+        connectTimeoutMs: config?.connectTimeoutMs ?? 5000,
+        readTimeoutMs: config?.readTimeoutMs ?? 2000,
+      };
+      return new WebSocketTransport(wsConfig);
     }
     default:
       throw new Error(`Unknown transport mode: ${String(mode)}`);

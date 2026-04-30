@@ -60,9 +60,17 @@ importers:
 
   packages/protocols/can: {}
 
-  packages/protocols/iso9141: {}
+  packages/protocols/iso9141:
+    dependencies:
+      '@ecu/transport-abstract':
+        specifier: workspace:*
+        version: link:../../transport/abstract
 
-  packages/protocols/kwp2000: {}
+  packages/protocols/kwp2000:
+    dependencies:
+      '@ecu/dtc-engine':
+        specifier: workspace:*
+        version: link:../../services/dtc-engine
 
   packages/protocols/uds: {}
 
@@ -72,7 +80,11 @@ importers:
 
   packages/services/security-engine: {}
 
-  packages/services/session-fsm: {}
+  packages/services/session-fsm:
+    dependencies:
+      xstate:
+        specifier: ^5.0.0
+        version: 5.31.0
 
   packages/transport/abstract: {}
 
@@ -1741,6 +1753,9 @@ packages:
   write-file-atomic@4.0.2:
     resolution: {integrity: sha512-7KxauUdBmSdWnmpaGFg+ppNjKF8uNLry8LyzjauQDOVONfFLNKrKvQOxZ/VuTIcS/gge/YNahf5RIIQWTSarlg==}
     engines: {node: ^12.13.0 || ^14.15.0 || >=16.0.0}
+
+  xstate@5.31.0:
+    resolution: {integrity: sha512-5B+0DqC0uNUrcLUEY3pn3iNy+swvK2E0ZpYp5gnV3oxMX5y87vzXkU5YXv9CAtyG5c5FOJ1SzvTWHrwE8fMZNQ==}
 
   y18n@5.0.8:
     resolution: {integrity: sha512-0pfFzegeDWJHJIAmTLRP2DwHjdF5s7jo9tuztdQxAhINCdvS+3nGINqPd00AphqJR/0LhANUS6/+7SCb98YOfA==}
@@ -3701,6 +3716,8 @@ snapshots:
     dependencies:
       imurmurhash: 0.1.4
       signal-exit: 3.0.7
+
+  xstate@5.31.0: {}
 
   y18n@5.0.8: {}
 

@@ -11,5 +11,8 @@
     "lint": "eslint src --ext .ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@ecu/transport-abstract": "workspace:*"
   }
 }

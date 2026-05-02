@@ -1,8 +1,8 @@
 /**
  * In-memory implementation of ECU repository
  */
-import { ECU } from "../../../domain/model/ecu";
-import { IECURepository } from "../index";
+import { ECU } from "../../domain/model/ecu";
+import { IECURepository } from "../../domain/repositories";
 
 export class InMemoryECURepository implements IECURepository {
   private ecus: Map<string, ECU> = new Map();

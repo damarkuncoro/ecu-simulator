@@ -20,10 +20,32 @@ export interface ITransport {
  * in implementations. Implementations should define specific frame/response types.
  */
 export interface IProtocolHandler {
-  parseFrame(data: Buffer): unknown | null;
-  formatResponse(response: unknown): Buffer;
-  processRequest(request: unknown): unknown;
+  /**
+   * Parse raw Buffer into a protocol-specific frame object
+   * @param data Raw bytes from transport
+   * @returns Parsed frame or null if invalid
+   */
+  parseFrame(data: Buffer): Promise<unknown | null>;
+
+  /**
+   * Format a protocol-specific response object into transport frame Buffer
+   * @param response Protocol response object
+   * @returns Buffer ready for transmission
+   */
+  formatResponse(response: unknown): Promise<Buffer>;
+
+  /**
+   * Process a parsed request frame and produce a response
+   * @param request Parsed request frame
+   * @returns Protocol response object
+   */
+  processRequest(request: unknown): Promise<unknown>;
+
   startSession(): Promise<void>;
   endSession(): Promise<void>;
+
+  /**
+   * Get the protocol type identifier
+   */
   getProtocolType(): 'kwp2000' | 'iso9141';
 }

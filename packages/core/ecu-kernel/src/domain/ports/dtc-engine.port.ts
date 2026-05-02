@@ -2,7 +2,7 @@
  * DTCEngine Port - Defines the contract for DTC engine operations
  * This interface is implemented by infrastructure layer (adapting the existing DTCEngine)
  */
-import { DTCStatus } from "../../model/dtc-status";
+import { DTCStatus } from "../model/dtc-status";
 
 export interface IDTCEngine {
   /**

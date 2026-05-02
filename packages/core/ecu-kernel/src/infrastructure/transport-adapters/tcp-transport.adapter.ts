@@ -2,7 +2,7 @@
  * TCP Transport Adapter - Adapts the existing TcpTransport to our ITransport interface
  * This allows the domain to depend on the interface rather than the concrete implementation
  */
-import { ITransport } from "../../../domain/ports";
+import { ITransport } from "../../domain/ports";
 
 /**
  * Adapter for TCP transport

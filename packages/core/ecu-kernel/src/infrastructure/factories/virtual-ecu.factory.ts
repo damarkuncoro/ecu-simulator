@@ -51,8 +51,8 @@ export class VirtualEcuFactory {
     const transport = new TcpTransportAdapter({
       host: config.host,
       port: config.port,
-      connectTimeoutMs: config.connectTimeoutMs,
-      readTimeoutMs: config.readTimeoutMs,
+      connectTimeoutMs: config.connectTimeoutMs ?? 5000,
+      readTimeoutMs: config.readTimeoutMs ?? 2000,
     });
 
     // Create protocol handler based on type
@@ -140,7 +140,7 @@ class Kwp2000ProtocolHandlerAdapter implements IProtocolHandler {
 
   async formatResponse(response: unknown): Promise<Buffer> {
     await this.initializeRouter();
-    return this.router.formatResponse(response as any); // type cast for internal compatibility
+    return this.router.formatResponse(response as any);
   }
 
   async processRequest(request: unknown): Promise<unknown> {
@@ -162,7 +162,7 @@ class Kwp2000ProtocolHandlerAdapter implements IProtocolHandler {
     }
   }
 
-  getProtocolType(): 'kwp2000' | 'iso9141' | 'uds' {
+  getProtocolType(): 'kwp2000' | 'iso9141' {
     return 'kwp2000';
   }
 }
@@ -199,7 +199,7 @@ class Iso9141ProtocolHandlerAdapter implements IProtocolHandler {
     throw new Error("ISO9141 protocol handler not yet implemented");
   }
 
-  getProtocolType(): 'kwp2000' | 'iso9141' | 'uds' {
+  getProtocolType(): 'kwp2000' | 'iso9141' {
     return 'iso9141';
   }
 }

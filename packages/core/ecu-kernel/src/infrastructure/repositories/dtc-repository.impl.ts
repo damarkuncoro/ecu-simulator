@@ -1,8 +1,8 @@
 /**
  * In-memory implementation of DTC repository
  */
-import { DTC } from "../../../domain/model/dtc";
-import { IDTCRepository } from "../index";
+import { DTC } from "../../domain/model/dtc";
+import { IDTCRepository } from "../../domain/repositories";
 
 export class InMemoryDTCRepository implements IDTCRepository {
   private dtcs: Map<number, DTC> = new Map();

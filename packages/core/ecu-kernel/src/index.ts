@@ -191,21 +191,21 @@ export class VirtualEcu {
   private async handleIncomingData(data: Buffer): Promise<void> {
     try {
       // Parse frame using protocol handler
-      const frame = this.protocolHandler.parseFrame(data);
+      const frame = await this.protocolHandler.parseFrame(data);
       if (!frame) {
         console.warn("[ECU] Invalid frame received");
         return;
       }
 
       // Process request through protocol handler
-      const response = this.protocolHandler.processRequest(frame);
-      
+      const response = await this.protocolHandler.processRequest(frame);
+
       // Format response into transport frame
-      const responseFrame = this.protocolHandler.formatResponse(response);
-      
+      const responseFrame = await this.protocolHandler.formatResponse(response);
+
       // Send response
       await this.transport.send(responseFrame);
-      
+
     } catch (err) {
       console.error("[ECU] Error handling data:", err);
       // Optionally send error response based on protocol
@@ -305,9 +305,15 @@ export class VirtualEcu {
        console.log(`[ECU] ${event}`);
      }
    }
- }
+}
 
-// ─── Exports ───────────────────────────────────────────────────────────────────
-
+// Re-export public API from submodules
 export * from "./domain/errors";
-export { PKG as CORE_KERNEL_PKG } from "./index";
+export * from "./domain/model/ecu";
+export * from "./domain/model/dtc";
+export * from "./domain/model/dtc-status";
+export * from "./domain/ports";
+export * from "./domain/repositories";
+export * from "./application/services/ecu-service";
+export * from "./application/services/dtc-service";
+export { VirtualEcuFactory } from "./infrastructure/factories/virtual-ecu.factory";

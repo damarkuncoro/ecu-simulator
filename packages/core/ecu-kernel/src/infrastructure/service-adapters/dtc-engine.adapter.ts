@@ -2,7 +2,7 @@
  * DTCEngine Adapter - Adapts the existing DTCEngine to the IDTCEngine interface
  */
 import { DTCEngine } from "@ecu/dtc-engine";
-import { IDTCEngine } from "./dtc-engine.port";
+import { IDTCEngine } from "../../domain/ports/dtc-engine.port";
 import { DTCStatus } from "../../domain/model/dtc-status";
 
 export class DtcEngineAdapter implements IDTCEngine {

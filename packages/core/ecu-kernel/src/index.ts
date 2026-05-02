@@ -6,6 +6,8 @@
 
 import { ITransport } from "./domain/ports";
 import { IProtocolHandler } from "./domain/ports";
+import { IDTCEngine } from "./domain/ports/dtc-engine.port";
+import { IDIDRegistry } from "./domain/ports/did-registry.port";
 import { ECU } from "./domain/model/ecu";
 import { DTCStatus } from "./domain/model/dtc-status";
 import { IECURepository } from "./domain/repositories";
@@ -15,6 +17,7 @@ import { DTCService } from "./application/services/dtc-service";
 import { SessionFSM, SessionContext } from "@ecu/session-fsm";
 import { timingEngine } from "@ecu/timing-engine";
 import { securityEngine } from "@ecu/security-engine";
+import { VirtualEcuFactory } from "./infrastructure/factories/virtual-ecu.factory";
 
 /**
  * Configuration interface for the refactored VirtualEcu
@@ -24,6 +27,8 @@ export interface VirtualEcuConfig {
   protocolHandler: IProtocolHandler;
   ecuRepository: IECURepository;
   dtcRepository: IDTCRepository;
+  dtcEngine: IDTCEngine;
+  didRegistry: IDIDRegistry;
   session?: {
     timeoutMs?: number;
     testerPresentTimeoutMs?: number;
@@ -44,6 +49,8 @@ export class VirtualEcu {
   private session: SessionFSM;
   private ecuService: ECUService;
   private dtcService: DTCService;
+  private dtcEngine: IDTCEngine;
+  private didRegistry: IDIDRegistry;
   private running = false;
 
   // State listeners
@@ -56,6 +63,8 @@ export class VirtualEcu {
     // Inject infrastructure dependencies
     this.transport = config.transport;
     this.protocolHandler = config.protocolHandler;
+    this.dtcEngine = config.dtcEngine;
+    this.didRegistry = config.didRegistry;
     
     // Inject repositories
     const ecuRepository = config.ecuRepository;
@@ -192,18 +201,17 @@ export class VirtualEcu {
   }
 
   /** Get DTCs for this ECU */
-  async getDTCs(): Promise<DTCStatus[]> {
-    // In a real implementation, we would get DTCs from the repository
-    // For now, we'll return an empty array as placeholder
-    return [];
+  async getDTCs(): Promise<any[]> {
+    // Use the injected dtcEngine to get DTCs
+    return this.dtcEngine.getAll();
   }
 
   /** Inject a fault (delegates to appropriate service) */
   injectFault(type: "dtc" | "timing" | "sensor", params: any): void {
     switch (type) {
       case "dtc":
-        // This would typically go through the DTCService
-        console.log("[ECU] Injecting DTC fault:", params);
+        // Use the injected dtcEngine
+        this.dtcEngine.set(params.code, params.status, params.description);
         break;
       case "timing":
         timingEngine.injectTimingViolation(params.violationType);
@@ -218,6 +226,9 @@ export class VirtualEcu {
     this.ecu.reset();
     this.session.reset();
     securityEngine.lockAll();
+    // Clear the DTC engine and DID registry via their interfaces
+    this.dtcEngine.clear();
+    this.didRegistry.clearAll();
     this.emitStateChange();
   }
 

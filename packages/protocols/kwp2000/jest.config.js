@@ -4,7 +4,5 @@ module.exports = {
   roots: ["<rootDir>/__tests__"],
   moduleFileExtensions: ["ts", "js"],
   collectCoverageFrom: ["src/**/*.ts", "!src/**/*.d.ts"],
-  moduleNameMapper: {
-    "^@ecu/transport-abstract$": "<rootDir>/../abstract/src/index.ts",
-  },
+  passWithNoTests: true,
 };

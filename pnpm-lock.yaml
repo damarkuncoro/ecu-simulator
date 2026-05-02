@@ -106,7 +106,17 @@ importers:
 
   packages/services/session-fsm: {}
 
-  packages/transport/abstract: {}
+  packages/transport/abstract:
+    optionalDependencies:
+      '@ecu/transport-serial':
+        specifier: workspace:*
+        version: link:../serial
+      '@ecu/transport-tcp':
+        specifier: workspace:*
+        version: link:../tcp
+      '@ecu/transport-ws':
+        specifier: workspace:*
+        version: link:../websocket
 
   packages/transport/serial:
     devDependencies:

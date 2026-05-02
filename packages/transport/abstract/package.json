@@ -4,6 +4,11 @@
   "description": "Abstract transport interface + factory",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "optionalDependencies": {
+    "@ecu/transport-tcp": "workspace:*",
+    "@ecu/transport-serial": "workspace:*",
+    "@ecu/transport-ws": "workspace:*"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "dev": "tsc -p tsconfig.json --watch",

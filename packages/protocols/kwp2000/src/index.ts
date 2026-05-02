@@ -5,6 +5,11 @@
  */
 
 import { DTCEngine } from "@ecu/dtc-engine";
+import {
+  DEFAULT_SESSION_TIMEOUT_MS,
+  DEFAULT_P2_TIMEOUT_MS,
+  DEFAULT_P3_TIMEOUT_MS,
+} from "@ecu/protocol-constants";
 
 // ─── KWP2000 Frame Types ────────────────────────────────────────────────────────
 
@@ -103,9 +108,9 @@ export class Kwp2000Router {
 
   constructor(config: Kwp2000RouterConfig) {
     this.dtcEngine = config.dtcEngine;
-    this.sessionTimeoutMs = config.sessionTimeoutMs || 5000; // P1
-    this.p2TimeoutMs = config.p2TimeoutMs || 50; // P2
-    this.p3TimeoutMs = config.p3TimeoutMs || 5000; // P3
+    this.sessionTimeoutMs = config.sessionTimeoutMs ?? DEFAULT_SESSION_TIMEOUT_MS; // P1
+    this.p2TimeoutMs = config.p2TimeoutMs ?? DEFAULT_P2_TIMEOUT_MS; // P2
+    this.p3TimeoutMs = config.p3TimeoutMs ?? DEFAULT_P3_TIMEOUT_MS; // P3
   }
 
   /** Parse incoming KWP2000 frame */

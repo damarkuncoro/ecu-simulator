@@ -18,6 +18,39 @@ import { SessionFSM, SessionContext } from "@ecu/session-fsm";
 import { timingEngine } from "@ecu/timing-engine";
 import { securityEngine } from "@ecu/security-engine";
 import { VirtualEcuFactory } from "./infrastructure/factories/virtual-ecu.factory";
+import {
+  DEFAULT_SESSION_TIMEOUT_MS,
+  DEFAULT_P3_TIMEOUT_MS,
+  DEFAULT_SECURITY_TIMEOUT_MS,
+} from "@ecu/protocol-constants";
+
+// ─── Fault Injector Registry (OCP: open for extension via registration) ──────
+
+export interface FaultInjector {
+  type: string;
+  inject(params: any): void;
+}
+
+export class FaultInjectorRegistry {
+  private injectors = new Map<string, FaultInjector>();
+
+  register(injector: FaultInjector): void {
+    this.injectors.set(injector.type, injector);
+  }
+
+  inject(type: string, params: any): void {
+    const injector = this.injectors.get(type);
+    if (injector) {
+      injector.inject(params);
+    } else {
+      console.warn(`[FaultInjector] Unknown fault type: ${type}`);
+    }
+  }
+
+  getRegisteredTypes(): string[] {
+    return Array.from(this.injectors.keys());
+  }
+}
 
 /**
  * Configuration interface for the refactored VirtualEcu
@@ -43,50 +76,73 @@ export interface VirtualEcuConfig {
  * Each responsibility is separated into different services (Single Responsibility Principle)
  */
 export class VirtualEcu {
-  private transport: ITransport;
-  private protocolHandler: IProtocolHandler;
-  private ecu: ECU;
-  private session: SessionFSM;
-  private ecuService: ECUService;
-  private dtcService: DTCService;
-  private dtcEngine: IDTCEngine;
-  private didRegistry: IDIDRegistry;
-  private running = false;
+   private transport: ITransport;
+   private protocolHandler: IProtocolHandler;
+   private ecu: ECU;
+   private session: SessionFSM;
+   private ecuService: ECUService;
+   private dtcService: DTCService;
+   private dtcEngine: IDTCEngine;
+   private didRegistry: IDIDRegistry;
+   private running = false;
+   private faultInjectorRegistry: FaultInjectorRegistry;
 
-  // State listeners
-  private stateListeners: Array<(state: string, ctx: SessionContext) => void> = [];
+   // State listeners
+   private stateListeners: Array<(state: string, ctx: SessionContext) => void> = [];
 
-  constructor(config: VirtualEcuConfig) {
-    // Initialize core ECU entity
-    this.ecu = new ECU("ecu-001"); // In real implementation, this could come from config
-    
-    // Inject infrastructure dependencies
-    this.transport = config.transport;
-    this.protocolHandler = config.protocolHandler;
-    this.dtcEngine = config.dtcEngine;
-    this.didRegistry = config.didRegistry;
-    
-    // Inject repositories
-    const ecuRepository = config.ecuRepository;
-    const dtcRepository = config.dtcRepository;
-    
-    // Initialize application services
-    this.ecuService = new ECUService(ecuRepository);
-    this.dtcService = new DTCService(dtcRepository, ecuRepository);
-    
+   constructor(config: VirtualEcuConfig) {
+     // Initialize core ECU entity
+     this.ecu = new ECU("ecu-001"); // In real implementation, this could come from config
+
+     // Inject infrastructure dependencies
+     this.transport = config.transport;
+     this.protocolHandler = config.protocolHandler;
+     this.dtcEngine = config.dtcEngine;
+     this.didRegistry = config.didRegistry;
+
+     // Inject repositories
+     const ecuRepository = config.ecuRepository;
+     const dtcRepository = config.dtcRepository;
+
+     // Initialize application services
+     this.ecuService = new ECUService(ecuRepository);
+     this.dtcService = new DTCService(dtcRepository, ecuRepository);
+
+     // Initialize fault injector registry (OCP: extensible via registration)
+     this.faultInjectorRegistry = new FaultInjectorRegistry();
+     this.registerDefaultFaultInjectors();
+
     // Initialize session FSM
     this.session = new SessionFSM({
-      sessionTimeoutMs: config.session?.timeoutMs ?? 5000,
-      testerPresentTimeoutMs: config.session?.testerPresentTimeoutMs ?? 5000,
-      securityTimeoutMs: config.session?.securityTimeoutMs ?? 10000,
+      sessionTimeoutMs: config.session?.timeoutMs ?? DEFAULT_SESSION_TIMEOUT_MS,
+      testerPresentTimeoutMs: config.session?.testerPresentTimeoutMs ?? DEFAULT_P3_TIMEOUT_MS,
+      securityTimeoutMs: config.session?.securityTimeoutMs ?? DEFAULT_SECURITY_TIMEOUT_MS,
     });
 
-    // Wire up transport event listeners
-    this.setupTransportListeners();
-    
-    // Wire up protocol handler events
-    this.setupProtocolHandlerListeners();
-  }
+     // Wire up transport event listeners
+     this.setupTransportListeners();
+
+     // Wire up protocol handler events
+     this.setupProtocolHandlerListeners();
+   }
+
+   private registerDefaultFaultInjectors(): void {
+     this.faultInjectorRegistry.register({
+       type: "dtc",
+       inject: (params: any) => {
+         this.dtcEngine.set(params.code, params.status, params.description);
+       },
+     });
+
+     this.faultInjectorRegistry.register({
+       type: "timing",
+       inject: (params: any) => {
+         timingEngine.injectTimingViolation(params.violationType);
+       },
+     });
+
+     // Sensor fault injector can be added similarly when implemented
+   }
 
   private setupTransportListeners(): void {
     this.transport.on("connected", () => this.handleConnect());
@@ -206,19 +262,9 @@ export class VirtualEcu {
     return this.dtcEngine.getAll();
   }
 
-  /** Inject a fault (delegates to appropriate service) */
-  injectFault(type: "dtc" | "timing" | "sensor", params: any): void {
-    switch (type) {
-      case "dtc":
-        // Use the injected dtcEngine
-        this.dtcEngine.set(params.code, params.status, params.description);
-        break;
-      case "timing":
-        timingEngine.injectTimingViolation(params.violationType);
-        break;
-      default:
-        console.warn("[ECU] Unknown fault type:", type);
-    }
+  /** Inject a fault using registered fault injectors (OCP) */
+  injectFault(type: string, params: any): void {
+    this.faultInjectorRegistry.inject(type, params);
   }
 
   /** Reset ECU to initial state */

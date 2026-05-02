@@ -1,4 +1,5 @@
 import { DTCStatus } from "./dtc-status";
+import { detectCategory } from "@ecu/dtc-utils";
 
 /**
  * DTC Entity - Represents a Diagnostic Trouble Code
@@ -64,21 +65,9 @@ export class DTC {
     this.description = description;
   }
 
-  // Category detection (same as before)
+  // Category detection (delegated to utility)
   detectCategory(): 'powertrain' | 'chassis' | 'body' | 'network' {
-    const high = (this.code >> 8) & 0xc0; // top 2 bits
-    switch (high) {
-      case 0x00:
-        return 'powertrain';
-      case 0x40:
-        return 'chassis';
-      case 0x80:
-        return 'body';
-      case 0xc0:
-        return 'network';
-      default:
-        return 'powertrain';
-    }
+    return detectCategory(this.code);
   }
 
   // For serialization to KWP2000

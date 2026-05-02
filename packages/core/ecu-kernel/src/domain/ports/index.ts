@@ -14,12 +14,15 @@ export interface ITransport {
 
 /**
  * Protocol Handler Port - Defines the contract for protocol handling operations
- * This interface is implemented by infrastructure layer (KWP2000, ISO9141 handlers)
+ * This interface is implemented by infrastructure layer (KWP2000, ISO9141, UDS handlers)
+ *
+ * Type parameters are intentionally using 'unknown' to enforce type safety
+ * in implementations. Implementations should define specific frame/response types.
  */
 export interface IProtocolHandler {
-  parseFrame(data: Buffer): any; // Returns parsed frame object
-  formatResponse(response: any): Buffer; // Formats response into transport frame
-  processRequest(request: any): any; // Processes request and returns response
+  parseFrame(data: Buffer): unknown | null;
+  formatResponse(response: unknown): Buffer;
+  processRequest(request: unknown): unknown;
   startSession(): Promise<void>;
   endSession(): Promise<void>;
   getProtocolType(): 'kwp2000' | 'iso9141';

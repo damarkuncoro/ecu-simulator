@@ -4,6 +4,12 @@
  * Manages session lifecycle, timing, and security states.
  */
 
+import {
+  DEFAULT_SESSION_TIMEOUT_MS,
+  DEFAULT_P3_TIMEOUT_MS,
+  DEFAULT_SECURITY_TIMEOUT_MS,
+} from "@ecu/protocol-constants";
+
 export const PKG = "@ecu/session-fsm";
 
 // ─── Session Types and States ───────────────────────────────────────────────
@@ -81,11 +87,10 @@ export class SessionFSM {
 
   constructor(config: SessionFSMConfig = {}) {
     this.config = {
-      sessionTimeoutMs: 5000,
-      testerPresentTimeoutMs: 5000,
-      securityTimeoutMs: 10000,
-      maxRetries: 3,
-      ...config,
+      sessionTimeoutMs: config.sessionTimeoutMs ?? DEFAULT_SESSION_TIMEOUT_MS,
+      testerPresentTimeoutMs: config.testerPresentTimeoutMs ?? DEFAULT_P3_TIMEOUT_MS,
+      securityTimeoutMs: config.securityTimeoutMs ?? DEFAULT_SECURITY_TIMEOUT_MS,
+      maxRetries: config.maxRetries ?? 3,
     };
 
     this.context = {

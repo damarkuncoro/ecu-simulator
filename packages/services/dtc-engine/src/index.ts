@@ -3,6 +3,8 @@
  * SAE J2012 / ISO 15031-6 compliant DTC management.
  */
 
+import { detectCategory } from "@ecu/dtc-utils";
+
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 /** SAE J2012 DTC status byte bits */
@@ -140,19 +142,7 @@ export class DTCEngine {
     return Buffer.concat(chunks);
   }
 
-  private detectCategory(code: number): DTCCategory {
-    const high = (code >> 8) & 0xc0; // top 2 bits
-    switch (high) {
-      case 0x00:
-        return "powertrain";
-      case 0x40:
-        return "chassis";
-      case 0x80:
-        return "body";
-      case 0xc0:
-        return "network";
-      default:
-        return "powertrain";
-    }
-  }
+   private detectCategory(code: number): DTCCategory {
+     return detectCategory(code) as DTCCategory;
+   }
 }

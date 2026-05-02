@@ -18,6 +18,11 @@ import { DidRegistryAdapter } from "../service-adapters/did-registry.adapter";
 /**
  * Factory for creating VirtualEcu instances with TCP transport
  */
+import {
+  DEFAULT_SESSION_TIMEOUT_MS,
+  DEFAULT_P2_TIMEOUT_MS,
+  DEFAULT_P3_TIMEOUT_MS,
+} from "@ecu/protocol-constants";
 export class VirtualEcuFactory {
   /**
    * Create a VirtualEcu configured for TCP transport
@@ -104,57 +109,47 @@ export class VirtualEcuFactory {
  * Adapter for KWP2000 protocol handler
  * Wraps the existing Kwp2000Router to implement IProtocolHandler
  */
+import type { Kwp2000Frame, Kwp2000Response } from "@ecu/kwp2000";
+
 class Kwp2000ProtocolHandlerAdapter implements IProtocolHandler {
-  private router: any; // The actual Kwp2000Router instance
+  private router: any; // The actual Kwp2000Router instance (lazy-loaded)
 
   constructor(
     private ecuRepository: IECURepository,
     private dtcRepository: IDTCRepository,
     private dtcEngine: IDTCEngine,
     private didRegistry: IDIDRegistry
-  ) {
-    // Note: We'll initialize the router lazily or in a setup method
-    // This avoids circular dependencies during construction
-  }
+  ) {}
 
-  private async initializeRouter(): Promise<void> {
-    if (!this.router) {
-      // Dynamically load the KWP2000 router to avoid hard dependency
-      const { Kwp2000Router } = await import("@ecu/kwp2000");
-      
-      // Create temporary service instances for the router
-      // In a full implementation, these would be proper service adapters
-      // But now we can pass the actual adapters we created
-      this.router = new Kwp2000Router({
-        dtcEngine: this.dtcEngine, // Now we pass the actual adapter
-        sessionTimeoutMs: 5000,
-        p2TimeoutMs: 50,
-        p3TimeoutMs: 5000,
-      });
-    }
-  }
+   private async initializeRouter(): Promise<void> {
+     if (!this.router) {
+       const { Kwp2000Router } = await import("@ecu/kwp2000");
+       this.router = new Kwp2000Router({
+         dtcEngine: this.dtcEngine as any,
+         sessionTimeoutMs: DEFAULT_SESSION_TIMEOUT_MS,
+         p2TimeoutMs: DEFAULT_P2_TIMEOUT_MS,
+         p3TimeoutMs: DEFAULT_P3_TIMEOUT_MS,
+       });
+     }
+   }
 
-  async parseFrame(data: Buffer): Promise<any> {
+   async parseFrame(data: Buffer): Promise<unknown | null> {
     await this.initializeRouter();
-    // Delegate to the actual router's parseFrame method
     return this.router.parseFrame(data);
   }
 
-  async formatResponse(response: any): Promise<Buffer> {
+  async formatResponse(response: unknown): Promise<Buffer> {
     await this.initializeRouter();
-    // Delegate to the actual router's formatResponse method
-    return this.router.formatResponse(response);
+    return this.router.formatResponse(response as any); // type cast for internal compatibility
   }
 
-  async processRequest(request: any): Promise<any> {
+  async processRequest(request: unknown): Promise<unknown> {
     await this.initializeRouter();
-    // Delegate to the actual router's processRequest method
-    return this.router.processRequest(request);
+    return this.router.processRequest(request as any);
   }
 
   async startSession(): Promise<void> {
     await this.initializeRouter();
-    // Delegate to the actual router's startSession method if it exists
     if (this.router.startSession) {
       await this.router.startSession();
     }
@@ -162,14 +157,13 @@ class Kwp2000ProtocolHandlerAdapter implements IProtocolHandler {
 
   async endSession(): Promise<void> {
     await this.initializeRouter();
-    // Delegate to the actual router's endSession method if it exists
     if (this.router.endSession) {
       await this.router.endSession();
     }
   }
 
-  getProtocolType(): "kwp2000" | "iso9141" {
-    return "kwp2000";
+  getProtocolType(): 'kwp2000' | 'iso9141' | 'uds' {
+    return 'kwp2000';
   }
 }
 
@@ -185,32 +179,27 @@ class Iso9141ProtocolHandlerAdapter implements IProtocolHandler {
     private didRegistry: IDIDRegistry
   ) {}
 
-  async parseFrame(data: Buffer): Promise<any> {
-    // TODO: Implement ISO9141 frame parsing
+  async parseFrame(data: Buffer): Promise<unknown | null> {
     throw new Error("ISO9141 protocol handler not yet implemented");
   }
 
-  async formatResponse(response: any): Promise<Buffer> {
-    // TODO: Implement ISO9141 response formatting
+  async formatResponse(response: unknown): Promise<Buffer> {
     throw new Error("ISO9141 protocol handler not yet implemented");
   }
 
-  async processRequest(request: any): Promise<any> {
-    // TODO: Implement ISO9141 request processing
+  async processRequest(request: unknown): Promise<unknown> {
     throw new Error("ISO9141 protocol handler not yet implemented");
   }
 
   async startSession(): Promise<void> {
-    // TODO: Implement ISO9141 session start
     throw new Error("ISO9141 protocol handler not yet implemented");
   }
 
   async endSession(): Promise<void> {
-    // TODO: Implement ISO9141 session end
     throw new Error("ISO9141 protocol handler not yet implemented");
   }
 
-  getProtocolType(): "kwp2000" | "iso9141" {
-    return "iso9141";
+  getProtocolType(): 'kwp2000' | 'iso9141' | 'uds' {
+    return 'iso9141';
   }
 }

@@ -11,5 +11,12 @@
     "lint": "eslint src --ext .ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@ecu/dtc-engine": "workspace:*",
+    "@ecu/did-registry": "workspace:*",
+    "@ecu/security-engine": "workspace:*",
+    "@ecu/timing-engine": "workspace:*",
+    "@ecu/protocol-constants": "workspace:*"
   }
 }

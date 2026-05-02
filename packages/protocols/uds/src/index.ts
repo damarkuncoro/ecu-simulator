@@ -8,6 +8,11 @@ import { DTCEngine } from "@ecu/dtc-engine";
 import { didRegistry } from "@ecu/did-registry";
 import { securityEngine } from "@ecu/security-engine";
 import { timingEngine } from "@ecu/timing-engine";
+import {
+  DEFAULT_SESSION_TIMEOUT_MS,
+  DEFAULT_P2_TIMEOUT_MS,
+  DEFAULT_P3_TIMEOUT_MS,
+} from "@ecu/protocol-constants";
 
 // ─── UDS Service Identifiers ─────────────────────────────────────────────────
 
@@ -152,10 +157,11 @@ export class UdsRouter {
 
   constructor(config: UdsRouterConfig) {
     this.dtcEngine = config.dtcEngine;
-    this.sessionTimeoutMs = config.sessionTimeoutMs || 5000;
-    this.p2TimeoutMs = config.p2TimeoutMs || 50;
-    this.p2StarTimeoutMs = config.p2StarTimeoutMs || 5000;
-    this.s3TimeoutMs = config.s3TimeoutMs || 5000;
+    this.sessionTimeoutMs = config.sessionTimeoutMs ?? DEFAULT_SESSION_TIMEOUT_MS;
+    this.p2TimeoutMs = config.p2TimeoutMs ?? DEFAULT_P2_TIMEOUT_MS;
+    this.p2StarTimeoutMs = config.p2StarTimeoutMs ?? DEFAULT_P3_TIMEOUT_MS; // P2* uses same as P3
+    this.s3TimeoutMs = config.s3TimeoutMs ?? DEFAULT_P3_TIMEOUT_MS;
+    this.securityLevel = 0;
   }
 
   /** Process UDS request and return response */

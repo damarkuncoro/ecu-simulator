@@ -10,12 +10,13 @@ import { Kwp2000Router } from "@ecu/kwp2000";
 import { DTCEngine, CONFIRMED_ACTIVE } from "@ecu/dtc-engine";
 import { SessionFSM } from "@ecu/session-fsm";
 import * as net from "net";
+import { TransportConfig } from "@ecu/transport-abstract";
 
 describe("KWP2000 + TCP Integration", () => {
   let ecu: VirtualEcu;
   let server: Server;
   let client: net.Socket;
-  let transportConfig: TcpTransport["config"];
+  let transportConfig: TransportConfig;
 
   beforeAll((done) => {
     // Wait for build if needed
@@ -25,6 +26,7 @@ describe("KWP2000 + TCP Integration", () => {
   beforeEach((done) => {
     // Start TCP server using VirtualEcu
     transportConfig = {
+      mode: "tcp",
       host: "127.0.0.1",
       port: 20001, // Use different port than demo
       connectTimeoutMs: 5000,
@@ -56,7 +58,7 @@ describe("KWP2000 + TCP Integration", () => {
   }, 15000);
 
   afterEach(async () => {
-    if (client && client.connected) {
+    if (client && !client.destroyed) {
       client.end();
     }
     await ecu.stop();
@@ -68,7 +70,7 @@ describe("KWP2000 + TCP Integration", () => {
   function sendRequest(
     serviceId: number,
     data: Buffer = Buffer.alloc(0),
-  ): Buffer {
+  ): Promise<Buffer> {
     const frame = Buffer.concat([
       Buffer.from([data.length + 1]), // length (serviceId + data)
       Buffer.from([serviceId]),
@@ -243,9 +245,9 @@ describe("KWP2000 + TCP Integration", () => {
         .then((r3) => {
           results.push(r3);
           expect(results.length).toBe(3);
-          expect(results[0][0]).toBe(0x50);
-          expect(results[1][0]).toBe(0x7e);
-          expect(results[2][0]).toBe(0x62);
+          expect(results[0]![0]).toBe(0x50);
+          expect(results[1]![0]).toBe(0x7e);
+          expect(results[2]![0]).toBe(0x62);
           done();
         })
         .catch(done);
@@ -330,7 +332,7 @@ describe("VirtualEcu Unit (No Network)", () => {
     ecu.injectFault("dtc", { code: 0x123456, status: CONFIRMED_ACTIVE });
     const dtcs = ecu.getDtcEngine().getByStatusMask(0xff);
     expect(dtcs.length).toBe(1);
-    expect(dtcs[0].code).toBe(0x123456);
+    expect(dtcs[0]!.code).toBe(0x123456);
   });
 
   it("should subscribe to state changes", () => {

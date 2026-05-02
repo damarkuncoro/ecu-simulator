@@ -4,12 +4,16 @@
  * Wires together all components into a functioning diagnostic ECU.
  */
 
-import { AbstractTransport, TransportConfig } from "@ecu/transport-abstract";
+import {
+  AbstractTransport,
+  TransportConfig,
+  TransportMode,
+} from "@ecu/transport-abstract";
 import { DTCEngine } from "@ecu/dtc-engine";
 import { DIDRegistry } from "@ecu/did-registry";
 import { securityEngine } from "@ecu/security-engine";
 import { timingEngine } from "@ecu/timing-engine";
-import { SessionFSM, SessionType } from "@ecu/session-fsm";
+import { SessionFSM, SessionType, SessionContext } from "@ecu/session-fsm";
 import { Kwp2000Router } from "@ecu/kwp2000";
 import type { Kwp2000Frame, Kwp2000Response } from "@ecu/kwp2000";
 
@@ -60,7 +64,7 @@ export class VirtualEcu {
     });
 
     // Create transport from config
-    this.transport = this.createTransport(config.transport);
+    this.transport = this.createTransportSync(config.transport);
     this.protocolType = config.protocol;
 
     // Wire up transport event listeners
@@ -68,14 +72,44 @@ export class VirtualEcu {
   }
 
   /** Create transport instance from factory */
-  private async createTransport(
-    config: TransportConfig,
-  ): Promise<AbstractTransport> {
-    const { createTransport } = await import("@ecu/transport-abstract");
-    return createTransport(config);
+  private createTransportSync(config: TransportConfig): AbstractTransport {
+    const mode = config.mode;
+
+    switch (mode) {
+      case "tcp": {
+        const { TcpTransport } = require("@ecu/transport-tcp");
+        return new TcpTransport({
+          host: config.host ?? "127.0.0.1",
+          port: config.port ?? 20000,
+          connectTimeoutMs: config.connectTimeoutMs ?? 5000,
+          readTimeoutMs: config.readTimeoutMs ?? 2000,
+        });
+      }
+      case "serial": {
+        const { SerialTransport } = require("@ecu/transport-serial");
+        if (!config.path)
+          throw new Error("ECU_SERIAL_PORT not set for serial transport");
+        return new SerialTransport({
+          path: config.path,
+          baudRate: config.baudRate ?? 10400,
+          connectTimeoutMs: config.connectTimeoutMs ?? 3000,
+          readTimeoutMs: config.readTimeoutMs ?? 2000,
+        });
+      }
+      case "websocket": {
+        const { WebSocketTransport } = require("@ecu/transport-ws");
+        return new WebSocketTransport({
+          host: config.host ?? "localhost",
+          port: config.port ?? 8080,
+          connectTimeoutMs: config.connectTimeoutMs ?? 5000,
+          readTimeoutMs: config.readTimeoutMs ?? 2000,
+        });
+      }
+      default:
+        throw new Error(`Unknown transport mode: ${String(mode)}`);
+    }
   }
 
-  /** Set up transport event handlers */
   private setupTransportListeners(): void {
     this.transport.on((event) => {
       switch (event.type) {

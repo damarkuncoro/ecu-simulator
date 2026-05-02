@@ -205,7 +205,7 @@ export class Kwp2000Router {
     // Simple reset - in real implementation this would trigger ECU reset
     return {
       serviceId: frame.serviceId,
-      data: Buffer.from([0x01]), // Reset type (hard reset)
+      data: Buffer.from([frame.data[0]!]), // Reset type (hard reset)
       isPositive: true,
     };
   }

@@ -3,6 +3,8 @@
  * This service orchestrates the use cases related to ECU power and sessions.
  */
 import { IECURepository } from "../../domain/repositories";
+import { ECU } from "../../domain/model/ecu";
+import { ECUNotFoundError, ECUOffError } from "../../domain/errors";
 
 export class ECUService {
   private ecuRepository: IECURepository;
@@ -11,49 +13,44 @@ export class ECUService {
     this.ecuRepository = ecuRepository;
   }
 
-  async powerOnECU(ecuId: string): Promise<void> {
+  /**
+   * Execute an operation on an ECU with standard error handling
+   * @private
+   */
+  private async withECU<T>(ecuId: string, operation: (ecu: ECU) => T): Promise<void> {
     const ecu = await this.ecuRepository.findById(ecuId);
     if (!ecu) {
-      throw new Error(`ECU with id ${ecuId} not found`);
+      throw new ECUNotFoundError(ecuId);
     }
-    ecu.powerOn();
+    operation(ecu);
     await this.ecuRepository.save(ecu);
+  }
+
+  async powerOnECU(ecuId: string): Promise<void> {
+    await this.withECU(ecuId, (ecu) => ecu.powerOn());
   }
 
   async powerOffECU(ecuId: string): Promise<void> {
-    const ecu = await this.ecuRepository.findById(ecuId);
-    if (!ecu) {
-      throw new Error(`ECU with id ${ecuId} not found`);
-    }
-    ecu.powerOff();
-    await this.ecuRepository.save(ecu);
+    await this.withECU(ecuId, (ecu) => ecu.powerOff());
   }
 
   async startECUSession(ecuId: string): Promise<void> {
-    const ecu = await this.ecuRepository.findById(ecuId);
-    if (!ecu) {
-      throw new Error(`ECU with id ${ecuId} not found`);
-    }
-    if (ecu.getState() !== 'on') {
-      throw new Error('ECU must be powered on to start a session');
-    }
-    ecu.startSession();
-    await this.ecuRepository.save(ecu);
+    await this.withECU(ecuId, (ecu) => {
+      if (ecu.getState() !== 'on') {
+        throw new ECUOffError();
+      }
+      ecu.startSession();
+    });
   }
 
   async endECUSession(ecuId: string): Promise<void> {
-    const ecu = await this.ecuRepository.findById(ecuId);
-    if (!ecu) {
-      throw new Error(`ECU with id ${ecuId} not found`);
-    }
-    ecu.endSession();
-    await this.ecuRepository.save(ecu);
+    await this.withECU(ecuId, (ecu) => ecu.endSession());
   }
 
   async getECUState(ecuId: string): Promise<'off' | 'on' | 'sleep'> {
     const ecu = await this.ecuRepository.findById(ecuId);
     if (!ecu) {
-      throw new Error(`ECU with id ${ecuId} not found`);
+      throw new ECUNotFoundError(ecuId);
     }
     return ecu.getState();
   }

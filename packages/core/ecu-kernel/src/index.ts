@@ -23,6 +23,7 @@ import {
   DEFAULT_P3_TIMEOUT_MS,
   DEFAULT_SECURITY_TIMEOUT_MS,
 } from "@ecu/protocol-constants";
+import * as DomainErrors from "./domain/errors";
 
 // ─── Fault Injector Registry (OCP: open for extension via registration) ──────
 
@@ -296,12 +297,17 @@ export class VirtualEcu {
     );
   }
 
-  /** Emit general events */
-  private emit(event: "started" | "stopped", data?: any): void {
-    // Internal event system — can be expanded
-    // In a more complete implementation, this could use an event emitter
-    if (event === "started" || event === "stopped") {
-      console.log(`[ECU] ${event}`);
-    }
-  }
-}
+   /** Emit general events */
+   private emit(event: "started" | "stopped", data?: any): void {
+     // Internal event system — can be expanded
+     // In a more complete implementation, this could use an event emitter
+     if (event === "started" || event === "stopped") {
+       console.log(`[ECU] ${event}`);
+     }
+   }
+ }
+
+// ─── Exports ───────────────────────────────────────────────────────────────────
+
+export * from "./domain/errors";
+export { PKG as CORE_KERNEL_PKG } from "./index";

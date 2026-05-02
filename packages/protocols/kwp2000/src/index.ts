@@ -93,6 +93,11 @@ export interface Kwp2000RouterConfig {
   p3TimeoutMs: number;
 }
 
+/**
+ * Service handler function type
+ */
+type ServiceHandlerFn = (frame: Kwp2000Frame) => Kwp2000Response;
+
 export class Kwp2000Router {
   private dtcEngine: DTCEngine;
   private currentSession: SessionType = SESSION_TYPES.DEFAULT;
@@ -101,16 +106,62 @@ export class Kwp2000Router {
   private securitySeed: number = 0;
   private testerPresentActive: boolean = false;
 
-  // Timing parameters (P1, P2, P3, P4)
+  // Timing parameters
   private readonly sessionTimeoutMs: number;
-  private readonly p2TimeoutMs: number; // Response timeout
-  private readonly p3TimeoutMs: number; // Tester present timeout
+  private readonly p2TimeoutMs: number;
+  private readonly p3TimeoutMs: number;
+
+  // Service handler registry (OCP: handlers stored in map, extendable via registration)
+  private readonly serviceHandlers: Map<number, ServiceHandlerFn>;
 
   constructor(config: Kwp2000RouterConfig) {
     this.dtcEngine = config.dtcEngine;
-    this.sessionTimeoutMs = config.sessionTimeoutMs ?? DEFAULT_SESSION_TIMEOUT_MS; // P1
-    this.p2TimeoutMs = config.p2TimeoutMs ?? DEFAULT_P2_TIMEOUT_MS; // P2
-    this.p3TimeoutMs = config.p3TimeoutMs ?? DEFAULT_P3_TIMEOUT_MS; // P3
+    this.sessionTimeoutMs = config.sessionTimeoutMs ?? DEFAULT_SESSION_TIMEOUT_MS;
+    this.p2TimeoutMs = config.p2TimeoutMs ?? DEFAULT_P2_TIMEOUT_MS;
+    this.p3TimeoutMs = config.p3TimeoutMs ?? DEFAULT_P3_TIMEOUT_MS;
+
+    // Initialize service handler registry
+    this.serviceHandlers = this.initializeHandlers();
+  }
+
+  /**
+   * Initialize service handler map
+   * OCP: To add new services, either extend this method or use registerHandler()
+   */
+  private initializeHandlers(): Map<number, ServiceHandlerFn> {
+    const handlers = new Map<number, ServiceHandlerFn>();
+
+    // Register standard services
+    handlers.set(SERVICE_IDS.DIAGNOSTIC_SESSION_CONTROL, (frame) =>
+      this.handleDiagnosticSessionControl(frame),
+    );
+    handlers.set(SERVICE_IDS.ECU_RESET, (frame) =>
+      this.handleEcuReset(frame),
+    );
+    handlers.set(SERVICE_IDS.CLEAR_DIAGNOSTIC_INFORMATION, (frame) =>
+      this.handleClearDiagnosticInformation(frame),
+    );
+    handlers.set(SERVICE_IDS.READ_DIAGNOSTIC_TROUBLE_CODES, (frame) =>
+      this.handleReadDiagnosticTroubleCodes(frame),
+    );
+    handlers.set(SERVICE_IDS.READ_DATA_BY_IDENTIFIER, (frame) =>
+      this.handleReadDataByIdentifier(frame),
+    );
+    handlers.set(SERVICE_IDS.SECURITY_ACCESS, (frame) =>
+      this.handleSecurityAccess(frame),
+    );
+    handlers.set(SERVICE_IDS.TESTER_PRESENT, (frame) =>
+      this.handleTesterPresent(frame),
+    );
+
+    return handlers;
+  }
+
+  /**
+   * Register a custom service handler (OCP extension point)
+   */
+  registerHandler(serviceId: number, handler: ServiceHandlerFn): void {
+    this.serviceHandlers.set(serviceId, handler);
   }
 
   /** Parse incoming KWP2000 frame */
@@ -135,34 +186,14 @@ export class Kwp2000Router {
     this.lastActivityTime = Date.now();
 
     try {
-      switch (frame.serviceId) {
-        case SERVICE_IDS.DIAGNOSTIC_SESSION_CONTROL:
-          return this.handleDiagnosticSessionControl(frame);
-
-        case SERVICE_IDS.ECU_RESET:
-          return this.handleEcuReset(frame);
-
-        case SERVICE_IDS.CLEAR_DIAGNOSTIC_INFORMATION:
-          return this.handleClearDiagnosticInformation(frame);
-
-        case SERVICE_IDS.READ_DIAGNOSTIC_TROUBLE_CODES:
-          return this.handleReadDiagnosticTroubleCodes(frame);
-
-        case SERVICE_IDS.READ_DATA_BY_IDENTIFIER:
-          return this.handleReadDataByIdentifier(frame);
-
-        case SERVICE_IDS.SECURITY_ACCESS:
-          return this.handleSecurityAccess(frame);
-
-        case SERVICE_IDS.TESTER_PRESENT:
-          return this.handleTesterPresent(frame);
-
-        default:
-          return this.createNegativeResponse(
-            frame.serviceId,
-            NRC.SERVICE_NOT_SUPPORTED,
-          );
+      const handler = this.serviceHandlers.get(frame.serviceId);
+      if (handler) {
+        return handler(frame);
       }
+      return this.createNegativeResponse(
+        frame.serviceId,
+        NRC.SERVICE_NOT_SUPPORTED,
+      );
     } catch (error) {
       console.error("KWP2000 processing error:", error);
       return this.createNegativeResponse(frame.serviceId, NRC.GENERAL_REJECT);

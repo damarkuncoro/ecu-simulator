@@ -155,67 +155,69 @@ export class UdsRouter {
   private readonly p2StarTimeoutMs: number;
   private readonly s3TimeoutMs: number;
 
+  // Service handler registry (OCP)
+  private readonly serviceHandlers: Map<number, (request: UdsRequest) => UdsResponse>;
+
   constructor(config: UdsRouterConfig) {
     this.dtcEngine = config.dtcEngine;
     this.sessionTimeoutMs = config.sessionTimeoutMs ?? DEFAULT_SESSION_TIMEOUT_MS;
     this.p2TimeoutMs = config.p2TimeoutMs ?? DEFAULT_P2_TIMEOUT_MS;
-    this.p2StarTimeoutMs = config.p2StarTimeoutMs ?? DEFAULT_P3_TIMEOUT_MS; // P2* uses same as P3
+    this.p2StarTimeoutMs = config.p2StarTimeoutMs ?? DEFAULT_P3_TIMEOUT_MS;
     this.s3TimeoutMs = config.s3TimeoutMs ?? DEFAULT_P3_TIMEOUT_MS;
     this.securityLevel = 0;
+
+    // Initialize service handlers
+    this.serviceHandlers = this.initializeHandlers();
   }
 
-  /** Process UDS request and return response */
-  processRequest(request: UdsRequest): UdsResponse {
-    this.lastActivityTime = Date.now();
+  /**
+   * Initialize service handler map
+   */
+  private initializeHandlers(): Map<number, (request: UdsRequest) => UdsResponse> {
+    const handlers = new Map<number, (request: UdsRequest) => UdsResponse>();
 
-    try {
-      switch (request.serviceId) {
-        case UDS_SERVICES.DIAGNOSTIC_SESSION_CONTROL:
-          return this.handleDiagnosticSessionControl(request);
+    handlers.set(UDS_SERVICES.DIAGNOSTIC_SESSION_CONTROL, (req) =>
+      this.handleDiagnosticSessionControl(req),
+    );
+    handlers.set(UDS_SERVICES.ECU_RESET, (req) =>
+      this.handleEcuReset(req),
+    );
+    handlers.set(UDS_SERVICES.SECURITY_ACCESS, (req) =>
+      this.handleSecurityAccess(req),
+    );
+    handlers.set(UDS_SERVICES.TESTER_PRESENT, (req) =>
+      this.handleTesterPresent(req),
+    );
+    handlers.set(UDS_SERVICES.READ_DATA_BY_IDENTIFIER, (req) =>
+      this.handleReadDataByIdentifier(req),
+    );
+    handlers.set(UDS_SERVICES.WRITE_DATA_BY_IDENTIFIER, (req) =>
+      this.handleWriteDataByIdentifier(req),
+    );
+    handlers.set(UDS_SERVICES.CLEAR_DIAGNOSTIC_INFORMATION, (req) =>
+      this.handleClearDiagnosticInformation(req),
+    );
+    handlers.set(UDS_SERVICES.READ_DTC_INFORMATION, (req) =>
+      this.handleReadDtcInformation(req),
+    );
+    handlers.set(UDS_SERVICES.CONTROL_DTC_SETTING, (req) =>
+      this.handleControlDtcSetting(req),
+    );
+    handlers.set(UDS_SERVICES.COMMUNICATION_CONTROL, (req) =>
+      this.handleCommunicationControl(req),
+    );
+    handlers.set(UDS_SERVICES.ROUTINE_CONTROL, (req) =>
+      this.handleRoutineControl(req),
+    );
 
-        case UDS_SERVICES.ECU_RESET:
-          return this.handleEcuReset(request);
+    return handlers;
+  }
 
-        case UDS_SERVICES.SECURITY_ACCESS:
-          return this.handleSecurityAccess(request);
-
-        case UDS_SERVICES.TESTER_PRESENT:
-          return this.handleTesterPresent(request);
-
-        case UDS_SERVICES.READ_DATA_BY_IDENTIFIER:
-          return this.handleReadDataByIdentifier(request);
-
-        case UDS_SERVICES.WRITE_DATA_BY_IDENTIFIER:
-          return this.handleWriteDataByIdentifier(request);
-
-        case UDS_SERVICES.CLEAR_DIAGNOSTIC_INFORMATION:
-          return this.handleClearDiagnosticInformation(request);
-
-        case UDS_SERVICES.READ_DTC_INFORMATION:
-          return this.handleReadDtcInformation(request);
-
-        case UDS_SERVICES.CONTROL_DTC_SETTING:
-          return this.handleControlDtcSetting(request);
-
-        case UDS_SERVICES.COMMUNICATION_CONTROL:
-          return this.handleCommunicationControl(request);
-
-        case UDS_SERVICES.ROUTINE_CONTROL:
-          return this.handleRoutineControl(request);
-
-        default:
-          return this.createNegativeResponse(
-            request.serviceId,
-            UDS_NRC.SERVICE_NOT_SUPPORTED,
-          );
-      }
-    } catch (error) {
-      console.error("UDS processing error:", error);
-      return this.createNegativeResponse(
-        request.serviceId,
-        UDS_NRC.GENERAL_REJECT,
-      );
-    }
+  /**
+   * Register a custom service handler (OCP extension point)
+   */
+  registerHandler(serviceId: number, handler: (request: UdsRequest) => UdsResponse): void {
+    this.serviceHandlers.set(serviceId, handler);
   }
 
   private handleDiagnosticSessionControl(request: UdsRequest): UdsResponse {
@@ -568,15 +570,37 @@ export class UdsRouter {
       routineResult,
     ]);
 
-    return {
-      serviceId: request.serviceId,
-      data: responseData,
-      isPositive: true,
-      timestamp: Date.now(),
-    };
-  }
+     return {
+       serviceId: request.serviceId,
+       data: responseData,
+       isPositive: true,
+       timestamp: Date.now(),
+     };
+   }
 
-  private createNegativeResponse(serviceId: number, nrc: number): UdsResponse {
+   /** Process UDS request and return response */
+   processRequest(request: UdsRequest): UdsResponse {
+     this.lastActivityTime = Date.now();
+
+     try {
+       const handler = this.serviceHandlers.get(request.serviceId);
+       if (handler) {
+         return handler(request);
+       }
+       return this.createNegativeResponse(
+         request.serviceId,
+         UDS_NRC.SERVICE_NOT_SUPPORTED,
+       );
+     } catch (error) {
+       console.error("UDS processing error:", error);
+       return this.createNegativeResponse(
+         request.serviceId,
+         UDS_NRC.GENERAL_REJECT,
+       );
+     }
+   }
+
+   private createNegativeResponse(serviceId: number, nrc: number): UdsResponse {
     return {
       serviceId: 0x7f, // Negative response SID
       data: Buffer.from([serviceId, nrc]),

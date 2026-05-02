@@ -65,7 +65,7 @@ describe("Kwp2000Router", () => {
     it("accepts default session", () => {
       const response = router.processRequest(frame(0x10, Buffer.from([0x01])));
       expect(response.isPositive).toBe(true);
-      expect(response.serviceId).toBe(0x50);
+      expect(response.serviceId).toBe(0x10);
       expect(router.getCurrentSession()).toBe(SESSION_TYPES.DEFAULT);
     });
 
@@ -103,7 +103,7 @@ describe("Kwp2000Router", () => {
     it("accepts hard reset", () => {
       const response = router.processRequest(frame(0x11, Buffer.from([0x01])));
       expect(response.isPositive).toBe(true);
-      expect(response.serviceId).toBe(0x51);
+      expect(response.serviceId).toBe(0x11);
       expect(response.data[0]).toBe(0x01);
     });
 
@@ -166,7 +166,7 @@ describe("Kwp2000Router", () => {
         frame(0x22, Buffer.from([0x0c, 0x00])),
       );
       expect(response.isPositive).toBe(true);
-      expect(response.serviceId).toBe(0x62);
+      expect(response.serviceId).toBe(0x22);
       expect(response.data[0]).toBe(0x0c);
       expect(response.data[1]).toBe(0x00);
       expect(response.data.length).toBe(4);
@@ -185,7 +185,7 @@ describe("Kwp2000Router", () => {
     it("generates seed for level 1", () => {
       const response = router.processRequest(frame(0x27, Buffer.from([0x01])));
       expect(response.isPositive).toBe(true);
-      expect(response.serviceId).toBe(0x67);
+      expect(response.serviceId).toBe(0x27);
       expect(response.data.length).toBe(5);
     });
 
@@ -233,7 +233,7 @@ describe("Kwp2000Router", () => {
     it("responds positively", () => {
       const response = router.processRequest(frame(0x3e, Buffer.from([0x00])));
       expect(response.isPositive).toBe(true);
-      expect(response.serviceId).toBe(0x7e);
+      expect(response.serviceId).toBe(0x3e);
     });
   });
 
@@ -301,25 +301,31 @@ describe("Kwp2000Router", () => {
   });
 
   describe("Response Formatting", () => {
-    it("formats positive response with length", () => {
+    it("formats positive response correctly", () => {
       const f = router.formatResponse({
         serviceId: 0x22,
         data: Buffer.from([1, 2, 3]),
         isPositive: true,
       });
-      expect(f[0]).toBe(5);
+      // Frame: [length, serviceId+0x40, data...]
+      // length = 1 (serviceId byte after length) + 3 (data) = 4
+      expect(f[0]).toBe(4);
       expect(f[1]).toBe(0x62);
       expect(f.slice(2)).toEqual(Buffer.from([1, 2, 3]));
     });
 
-    it("formats negative response", () => {
+    it("formats negative response correctly", () => {
       const f = router.formatResponse({
-        serviceId: 0x22,
-        data: Buffer.from([0x31]),
+        serviceId: 0x7f, // negative response SID
+        data: Buffer.from([0x22, 0x31]), // [original service, NRC]
         isPositive: false,
       });
-      expect(f[0]).toBe(0x7f);
-      expect(f[2]).toBe(0x31);
+      // Frame: [length, 0x7F, originalServiceId, NRC]
+      // length = 1 (0x7F) + 2 (orig serviceId + NRC) = 3
+      expect(f[0]).toBe(3);
+      expect(f[1]).toBe(0x7f);
+      expect(f[2]).toBe(0x22);
+      expect(f[3]).toBe(0x31);
     });
   });
 });

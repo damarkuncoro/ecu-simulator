@@ -16,6 +16,7 @@
     "skipLibCheck": true,
     "downlevelIteration": true,
     "useDefineForClassFields": false,
+    "baseUrl": ".",
     "paths": {
       "@ecu/core-kernel": ["packages/core/ecu-kernel/src/index.ts"],
       "@ecu/timing-engine": ["packages/core/timing-engine/src/index.ts"],
@@ -33,11 +34,11 @@
       "@ecu/transport-tcp": ["packages/transport/tcp/src/index.ts"],
       "@ecu/transport-serial": ["packages/transport/serial/src/index.ts"],
       "@ecu/transport-ws": ["packages/transport/websocket/src/index.ts"],
-        "@ecu/checksum": ["packages/utils/checksum/src/index.ts"],
-        "@ecu/logger": ["packages/utils/logger/src/index.ts"],
-        "@ecu/test-helpers": ["packages/utils/test-helpers/src/index.ts"],
-        "@ecu/dtc-utils": ["packages/utils/dtc-utils/src/index.ts"],
-        "@ecu/protocol-constants": ["packages/utils/protocol-constants/src/index.ts"]
+      "@ecu/checksum": ["packages/utils/checksum/src/index.ts"],
+      "@ecu/logger": ["packages/utils/logger/src/index.ts"],
+      "@ecu/test-helpers": ["packages/utils/test-helpers/src/index.ts"],
+      "@ecu/dtc-utils": ["packages/utils/dtc-utils/src/index.ts"],
+      "@ecu/protocol-constants": ["packages/utils/protocol-constants/src/index.ts"]
     }
   }
 }

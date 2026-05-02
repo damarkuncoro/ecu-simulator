@@ -1,6 +1,3 @@
-import { DTC } from "../model/dtc";
-import { ECU } from "../model/ecu";
-
 /**
  * Repository interface for ECU aggregates
  * Defines the contract for ECU persistence operations

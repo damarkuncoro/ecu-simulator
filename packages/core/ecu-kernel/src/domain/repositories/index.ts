@@ -2,6 +2,9 @@
  * Repository interface for ECU aggregates
  * Defines the contract for ECU persistence operations
  */
+import { ECU } from "../model/ecu";
+import { DTC } from "../model/dtc";
+
 export interface IECURepository {
   save(ecu: ECU): Promise<void>;
   findById(id: string): Promise<ECU | null>;

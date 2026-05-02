@@ -2,6 +2,10 @@
  * DTCService - Application service for managing DTCs
  * This service orchestrates the use cases related to DTC management.
  */
+import { IDTCRepository, IECURepository } from "../../domain/repositories";
+import { DTC } from "../../domain/model/dtc";
+import { DTCStatus } from "../../domain/model/dtc-status";
+
 export class DTCService {
   private dtcRepository: IDTCRepository;
   private ecuRepository: IECURepository;

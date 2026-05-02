@@ -2,6 +2,8 @@
  * ECUService - Application service for managing ECU lifecycle
  * This service orchestrates the use cases related to ECU power and sessions.
  */
+import { IECURepository } from "../../domain/repositories";
+
 export class ECUService {
   private ecuRepository: IECURepository;
 

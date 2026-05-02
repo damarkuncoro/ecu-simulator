@@ -46,7 +46,14 @@ importers:
         specifier: ^5.4.0
         version: 5.9.3
 
-  apps/cli-diag: {}
+  apps/cli-diag:
+    dependencies:
+      '@ecu/logger':
+        specifier: workspace:*
+        version: link:../../packages/utils/logger
+      '@ecu/transport-abstract':
+        specifier: workspace:*
+        version: link:../../packages/transport/abstract
 
   apps/cloud-gateway:
     devDependencies:
@@ -83,7 +90,17 @@ importers:
 
   packages/services/did-registry: {}
 
-  packages/services/dtc-engine: {}
+  packages/services/dtc-engine:
+    devDependencies:
+      '@types/jest':
+        specifier: ^29.5.14
+        version: 29.5.14
+      jest:
+        specifier: ^29.7.0
+        version: 29.7.0(@types/node@20.19.39)(ts-node@10.9.2(@types/node@20.19.39)(typescript@5.9.3))
+      ts-jest:
+        specifier: ^29.4.9
+        version: 29.4.9(@babel/core@7.29.0)(@jest/transform@29.7.0)(@jest/types@29.6.3)(babel-jest@29.7.0(@babel/core@7.29.0))(jest-util@29.7.0)(jest@29.7.0(@types/node@20.19.39)(ts-node@10.9.2(@types/node@20.19.39)(typescript@5.9.3)))(typescript@5.9.3)
 
   packages/services/security-engine: {}
 

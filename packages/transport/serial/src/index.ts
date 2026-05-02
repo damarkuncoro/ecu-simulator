@@ -4,19 +4,21 @@
  * Wraps node-serialport with 5-baud init support.
  */
 
-import { SerialPort } from 'serialport';
+import { SerialPort } from "serialport";
 import {
   AbstractTransport,
   TransportConfig,
   TransportTimeoutError,
   TransportNotConnectedError,
   TransportError,
-} from '@ecu/transport-abstract';
+} from "@ecu/transport-abstract";
 
-interface SerialConfig
-  extends Required<
-    Pick<TransportConfig, 'path' | 'baudRate' | 'connectTimeoutMs' | 'readTimeoutMs'>
-  > {}
+interface SerialConfig extends Required<
+  Pick<
+    TransportConfig,
+    "path" | "baudRate" | "connectTimeoutMs" | "readTimeoutMs"
+  >
+> {}
 
 export class SerialTransport extends AbstractTransport {
   private port: SerialPort | null = null;
@@ -28,7 +30,9 @@ export class SerialTransport extends AbstractTransport {
     this.config = config;
   }
 
-  get mode() { return 'serial' as const; }
+  get mode() {
+    return "serial" as const;
+  }
 
   get isConnected(): boolean {
     return this.port?.isOpen ?? false;
@@ -40,42 +44,47 @@ export class SerialTransport extends AbstractTransport {
         path: this.config.path,
         baudRate: this.config.baudRate,
         dataBits: 8,
-        parity: 'none',
+        parity: "none",
         stopBits: 1,
         autoOpen: false,
       });
 
       const timeout = setTimeout(() => {
         port.close();
-        reject(new TransportTimeoutError('serial', this.config.connectTimeoutMs));
+        reject(
+          new TransportTimeoutError("serial", this.config.connectTimeoutMs),
+        );
       }, this.config.connectTimeoutMs);
 
       port.open((err) => {
         clearTimeout(timeout);
         if (err) {
-          reject(new TransportError(err.message, 'serial', err));
+          reject(new TransportError(err.message, "serial", err));
           return;
         }
         this.port = port;
         this._stats.connectedAt = new Date();
-        this.emit({ type: 'connected' });
+        this.emit({ type: "connected" });
         resolve();
       });
 
-      port.on('data', (data: Buffer) => {
+      port.on("data", (data: Buffer) => {
         this.receiveBuffer = Buffer.concat([this.receiveBuffer, data]);
         this.trackReceive(data.length);
-        this.emit({ type: 'data', payload: data });
+        this.emit({ type: "data", payload: data });
       });
 
-      port.on('close', () => {
+      port.on("close", () => {
         this.port = null;
-        this.emit({ type: 'disconnected', reason: 'port closed' });
+        this.emit({ type: "disconnected", reason: "port closed" });
       });
 
-      port.on('error', (err) => {
+      port.on("error", (err) => {
         this._stats.errors++;
-        this.emit({ type: 'error', error: new TransportError(err.message, 'serial', err) });
+        this.emit({
+          type: "error",
+          error: new TransportError(err.message, "serial", err),
+        });
       });
     });
   }
@@ -95,13 +104,13 @@ export class SerialTransport extends AbstractTransport {
 
   async send(data: Buffer): Promise<void> {
     if (!this.isConnected || !this.port) {
-      throw new TransportNotConnectedError('serial');
+      throw new TransportNotConnectedError("serial");
     }
     return new Promise((resolve, reject) => {
       this.port!.write(data, (err) => {
         if (err) {
           this._stats.errors++;
-          reject(new TransportError(err.message, 'serial', err));
+          reject(new TransportError(err.message, "serial", err));
           return;
         }
         this.port!.drain((drainErr) => {
@@ -118,14 +127,14 @@ export class SerialTransport extends AbstractTransport {
   async read(expectedBytes: number, timeoutMs?: number): Promise<Buffer> {
     const timeout = timeoutMs ?? this.config.readTimeoutMs;
 
-    if (this.receiveBuffer.length >= expectedCount(expectedBytes)) {
+    if (this.receiveBuffer.length >= expectedBytes) {
       return this.drainBuffer(expectedBytes);
     }
 
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => {
         cleanup();
-        reject(new TransportTimeoutError('serial', timeout));
+        reject(new TransportTimeoutError("serial", timeout));
       }, timeout);
 
       const onData = () => {
@@ -137,10 +146,10 @@ export class SerialTransport extends AbstractTransport {
 
       const cleanup = () => {
         clearTimeout(timer);
-        this.port?.removeListener('data', onData);
+        this.port?.removeListener("data", onData);
       };
 
-      this.port?.on('data', onData);
+      this.port?.on("data", onData);
     });
   }
 
@@ -158,17 +167,21 @@ export class SerialTransport extends AbstractTransport {
       path: this.config.path,
       baudRate: 5,
       dataBits: 8,
-      parity: 'none',
+      parity: "none",
       stopBits: 1,
     });
 
     await new Promise<void>((resolve, reject) => {
       initPort.write(Buffer.from([ecuAddress]), (err) => {
         if (err) reject(err);
-        else setTimeout(() => {
-          initPort.close();
-          resolve();
-        }, BIT_DURATION_MS * 10 + 100); // 10 bits + margin
+        else
+          setTimeout(
+            () => {
+              initPort.close();
+              resolve();
+            },
+            BIT_DURATION_MS * 10 + 100,
+          ); // 10 bits + margin
       });
     });
   }
@@ -181,4 +194,6 @@ export class SerialTransport extends AbstractTransport {
 }
 
 // TypeScript helper — avoids shadow variable lint errors
-function expectedCount(n: number): number { return n; }
+function expectedCount(n: number): number {
+  return n;
+}

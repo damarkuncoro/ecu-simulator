@@ -70,33 +70,33 @@ Transport Layer
 
 ### ✅ Operational
 
-| Component | Status | Details |
-|-----------|--------|---------|
-| TCP Transport | ✅ | Full socket implementation with timeout/error handling |
-| DTC Engine | ✅ | SAE J2012/ISO 15031-6 compliant, full CRUD operations |
-| Test ECU (demo) | ✅ | Working KWP2000 simulator on port 20000 |
-| Abstract Transport | ✅ | Interface with TCP/Serial/WS implementations |
-| CLI Tool | ✅ | Builds and runs (basic connectivity) |
+| Component          | Status | Details                                                |
+| ------------------ | ------ | ------------------------------------------------------ |
+| TCP Transport      | ✅     | Full socket implementation with timeout/error handling |
+| DTC Engine         | ✅     | SAE J2012/ISO 15031-6 compliant, full CRUD operations  |
+| Test ECU (demo)    | ✅     | Working KWP2000 simulator on port 20000                |
+| Abstract Transport | ✅     | Interface with TCP/Serial/WS implementations           |
+| CLI Tool           | ✅     | Builds and runs (basic connectivity)                   |
 
 ### 🔄 In Progress
 
-| Component | Status | ETA |
-|-----------|--------|-----|
-| KWP2000 Protocol | 🔄 | Phase 2 (Q3 2026) |
-| Serial Transport | 🔄 | Phase 2 (Q3 2026) |
-| ISO9141 Physical | 🔄 | Phase 2 (Q3 2026) |
-| Session FSM | 🔄 | Phase 2 (Q3 2026) |
+| Component        | Status | ETA               |
+| ---------------- | ------ | ----------------- |
+| KWP2000 Protocol | 🔄     | Phase 2 (Q3 2026) |
+| Serial Transport | 🔄     | Phase 2 (Q3 2026) |
+| ISO9141 Physical | 🔄     | Phase 2 (Q3 2026) |
+| Session FSM      | 🔄     | Phase 2 (Q3 2026) |
 
 ### 📅 Planned
 
-| Component | Phase | Target |
-|-----------|-------|--------|
-| DID Registry | Phase 3 | Q4 2026 |
+| Component       | Phase   | Target  |
+| --------------- | ------- | ------- |
+| DID Registry    | Phase 3 | Q4 2026 |
 | Security Engine | Phase 3 | Q4 2026 |
-| Timing Engine | Phase 3 | Q4 2026 |
-| OEM Profiles | Phase 3 | Q4 2026 |
-| Desktop UI | Phase 3 | Q4 2026 |
-| AI Integration | Phase 4 | Q1 2027 |
+| Timing Engine   | Phase 3 | Q4 2026 |
+| OEM Profiles    | Phase 3 | Q4 2026 |
+| Desktop UI      | Phase 3 | Q4 2026 |
+| AI Integration  | Phase 4 | Q1 2027 |
 
 ## Project Structure
 
@@ -167,18 +167,21 @@ pnpm test:hil
 ## Roadmap
 
 ### Phase 1: Core Stabilization (Q2 2026) ✅
+
 - TCP Transport operational
 - DTC Engine complete
 - Basic CLI tool
 - Unit test coverage >80%
 
 ### Phase 2: Protocol Implementation (Q3 2026) 🔄
+
 - KWP2000 service router
 - ISO9141 physical layer
 - Serial/K-Line transport
 - Session FSM
 
 ### Phase 3: Service Layer (Q4 2026) 📅
+
 - DID Registry
 - Security Engine
 - Timing Engine
@@ -186,12 +189,14 @@ pnpm test:hil
 - Desktop UI
 
 ### Phase 4: AI Integration (Q1 2027) 📅
+
 - Fault prediction models
 - Diagnostic assistant
 - Automated test generation
 - Anomaly detection
 
 ### Phase 5: Production & Scale (Q2 2027) 📅
+
 - Kubernetes deployment
 - Multi-region setup
 - CAN/UDS full implementation
@@ -257,17 +262,18 @@ All detailed documentation is in `/briefing-development/`:
 
 ## Success Metrics
 
-| Metric | Target | Current |
-|--------|--------|---------|
-| Protocol compliance | >99% NRC accuracy | N/A (Phase 1) |
-| Timing accuracy | ±5% of spec | N/A (Phase 1) |
-| Test coverage | >80% unit | ~60% |
-| Response time | <200ms P99 | N/A (Phase 1) |
-| Availability | >99.9% | N/A (Phase 1) |
+| Metric              | Target            | Current                       |
+| ------------------- | ----------------- | ----------------------------- |
+| Protocol compliance | >99% NRC accuracy | N/A (Phase 1)                 |
+| Timing accuracy     | ±5% of spec       | N/A (Phase 1)                 |
+| Test coverage       | >80% unit         | ~35% (17 tests in dtc-engine) |
+| Response time       | <200ms P99        | N/A (Phase 1)                 |
+| Availability        | >99.9%            | N/A (Phase 1)                 |
 
 ## Support
 
 For issues or questions:
+
 1. Check `briefing-development/README.md`
 2. Review protocol specifications in `api-design.json`
 3. Run unit tests: `pnpm test:unit`

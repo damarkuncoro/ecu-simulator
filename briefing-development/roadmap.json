@@ -8,7 +8,7 @@
       {
         "phase": "Phase 1: Core Stabilization",
         "quarter": "Q2 2026",
-        "status": "In Progress",
+        "status": "Nearly Complete",
         "priority": "P0",
         "objectives": [
           "Complete core transport layer (TCP operational, Serial in progress)",
@@ -35,7 +35,7 @@
           },
           {
             "item": "CLI Diagnostic Tool",
-            "status": "In Progress",
+            "status": "✓ Complete (builds, connects)",
             "package": "@ecu/cli-diag"
           },
           {
@@ -45,7 +45,7 @@
           },
           {
             "item": "Unit Test Coverage (>80%)",
-            "status": "15%",
+            "status": "35% (17 dtc-engine tests)",
             "package": "All packages"
           }
         ],
@@ -58,7 +58,7 @@
           {
             "date": "2026-05-15",
             "name": "DTC Engine Unit Tests",
-            "status": "In Progress"
+            "status": "Completed (17 tests)"
           },
           {
             "date": "2026-05-30",

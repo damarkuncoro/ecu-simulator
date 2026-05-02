@@ -4,5 +4,7 @@ module.exports = {
   roots: ["<rootDir>/__tests__"],
   moduleFileExtensions: ["ts", "js"],
   collectCoverageFrom: ["src/**/*.ts", "!src/**/*.d.ts"],
-  passWithNoTests: true,
+  moduleNameMapper: {
+    "^@ecu/dtc-engine$": "<rootDir>/../../services/dtc-engine/src/index.ts",
+  },
 };

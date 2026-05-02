@@ -12,5 +12,9 @@
     "lint": "eslint src --ext .ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "clean": "rm -rf dist"
+  },
+  "devDependencies": {
+    "@types/ws": "^8.18.1",
+    "ws": "^8.20.0"
   }
 }

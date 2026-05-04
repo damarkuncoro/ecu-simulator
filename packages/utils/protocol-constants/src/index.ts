@@ -1,75 +1,16 @@
 /**
  * @ecu/protocol-constants
- * Centralized default timing parameters and protocol constants.
- * Single source of truth to avoid duplication across packages.
+ * Centralized timing constants and NRC codes (DRY principle)
  */
 
-// ─── Timing Constants ────────────────────────────────────────────────────────
+// ─── Default timeout values (milliseconds) ────────────────────────────────────
 
-/**
- * Default P2 timeout (ECU response time) in milliseconds.
- * Standard: 50ms for KWP2000/UDS at typical baud rates.
- */
-export const DEFAULT_P2_TIMEOUT_MS = 50;
+export const DEFAULT_SESSION_TIMEOUT_MS = 30000; // 30 seconds
+export const DEFAULT_P2_TIMEOUT_MS = 50; // 50 milliseconds
+export const DEFAULT_P3_TIMEOUT_MS = 5000; // 5 seconds
+export const DEFAULT_SECURITY_TIMEOUT_MS = 30000; // 30 seconds
 
-/**
- * Default P3 timeout (tester present interval) in milliseconds.
- * Standard: 5 seconds (5000ms).
- */
-export const DEFAULT_P3_TIMEOUT_MS = 5000;
-
-/**
- * Default P1 timeout (inter-byte time) in milliseconds.
- * For high-speed protocols, often 0.
- */
-export const DEFAULT_P1_TIMEOUT_MS = 0;
-
-/**
- * Default P4 timeout (tester inter-byte) in milliseconds.
- */
-export const DEFAULT_P4_TIMEOUT_MS = 0;
-
-/**
- * Default session timeout (maximum session duration without tester present) in ms.
- */
-export const DEFAULT_SESSION_TIMEOUT_MS = 5000;
-
-/**
- * Default security access timeout (for seed/key exchange) in ms.
- */
-export const DEFAULT_SECURITY_TIMEOUT_MS = 10000;
-
-// ─── Protocol-Specific Default Timings ──────────────────────────────────────
-
-export interface TimingParameters {
-  p1: number;
-  p2: number;
-  p3: number;
-  p4: number;
-}
-
-export const KWP2000_DEFAULT_TIMINGS: TimingParameters = {
-  p1: DEFAULT_P1_TIMEOUT_MS,
-  p2: DEFAULT_P2_TIMEOUT_MS,
-  p3: DEFAULT_P3_TIMEOUT_MS,
-  p4: DEFAULT_P4_TIMEOUT_MS,
-};
-
-export const UDS_DEFAULT_TIMINGS: TimingParameters = {
-  p1: DEFAULT_P1_TIMEOUT_MS,
-  p2: DEFAULT_P2_TIMEOUT_MS,
-  p3: DEFAULT_P3_TIMEOUT_MS,
-  p4: DEFAULT_P4_TIMEOUT_MS,
-};
-
-export const ISO9141_DEFAULT_TIMINGS: TimingParameters = {
-  p1: 5,   // 5ms inter-byte for ISO9141
-  p2: 25,  // Typically 25ms
-  p3: 5000,
-  p4: 5,   // 5ms inter-byte for tester
-};
-
-// ─── Negative Response Codes (Common) ───────────────────────────────────────
+// ─── KWP2000 / UDS Negative Response Codes (NRC) ─────────────────────────────
 
 export const NRC = {
   GENERAL_REJECT: 0x10,
@@ -93,5 +34,3 @@ export const NRC = {
   SUB_FUNCTION_NOT_SUPPORTED_IN_ACTIVE_SESSION: 0x7e,
   SERVICE_NOT_SUPPORTED_IN_ACTIVE_SESSION: 0x7f,
 } as const;
-
-export type NRC = typeof NRC[keyof typeof NRC];

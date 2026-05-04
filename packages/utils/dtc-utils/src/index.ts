@@ -1,45 +1,31 @@
 /**
  * @ecu/dtc-utils
- * Shared utilities for DTC (Diagnostic Trouble Code) operations.
+ * Shared DTC-related utilities (DRY principle)
  */
 
 /**
- * SAE J2012 / ISO 15031-6 DTC category detection.
- * Extracts the top 2 bits of the 16-bit DTC code to determine category.
- *
- * DTC format: P (powertrain), C (chassis), B (body), U (network)
- * Bits 15-14 determine category:
- *   0b00 -> powertrain (P)
- *   0b01 -> chassis (C)
- *   0b10 -> body (B)
- *   0b11 -> network (U)
+ * SAE J2012 / ISO 15031-6 DTC category detection
+ * Extracts category from 5-bit (0-31) or 7-bit (0-127) prefix
  */
-export function detectCategory(code: number): 'powertrain' | 'chassis' | 'body' | 'network' {
-  const high = (code >> 8) & 0xc0; // top 2 bits of high byte
-  switch (high) {
-    case 0x00:
-      return 'powertrain';
-    case 0x40:
-      return 'chassis';
-    case 0x80:
-      return 'body';
-    case 0xc0:
-      return 'network';
-    default:
-      return 'powertrain';
+export function detectCategory(code: number): "powertrain" | "chassis" | "body" | "network" | "unknown" {
+  const prefix = code >> 16; // top 5 or 7 bits depending on code size
+
+  if (prefix >= 0 && prefix <= 0x1F) {
+    // 0x00–0x1F → powertrain (0x00–0x3F when using 2-byte code)
+    return "powertrain";
   }
-}
+  if (prefix >= 0x20 && prefix <= 0x3F) {
+    // 0x20–0x3F → chassis
+    return "chassis";
+  }
+  if (prefix >= 0x40 && prefix <= 0x5F) {
+    // 0x40–0x5F → body
+    return "body";
+  }
+  if (prefix >= 0x60 && prefix <= 0x7F) {
+    // 0x60–0x7F → network
+    return "network";
+  }
 
-/**
- * Convert a 16-bit DTC code to its string representation (e.g., P0300)
- */
-export function codeToString(code: number): string {
-  const categoryPrefix = ['P', 'C', 'B', 'U'][(code >> 8) & 0xc0 ? ((code >> 8) & 0xc0 >> 6) + 1 : 0];
-  // More accurate mapping based on detectCategory
-  const category = detectCategory(code);
-  const prefix = category === 'powertrain' ? 'P' :
-                 category === 'chassis' ? 'C' :
-                 category === 'body' ? 'B' : 'U';
-  const number = code & 0x3fff; // lower 14 bits
-  return `${prefix}${number.toString(16).toUpperCase().padStart(4, '0')}`;
+  return "unknown";
 }

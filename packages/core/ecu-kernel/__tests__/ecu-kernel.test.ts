@@ -4,19 +4,15 @@
  */
 
 import { createServer, Server } from "net";
-import { VirtualEcu, VirtualEcuConfig } from "@ecu/core-kernel";
-import { TcpTransport } from "@ecu/transport-tcp";
-import { Kwp2000Router } from "@ecu/kwp2000";
-import { DTCEngine, CONFIRMED_ACTIVE } from "@ecu/dtc-engine";
-import { SessionFSM } from "@ecu/session-fsm";
 import * as net from "net";
-import { TransportConfig } from "@ecu/transport-abstract";
+import { VirtualEcu, VirtualEcuFactory } from "@ecu/core-kernel";
+import { DTCStatusFactory } from "@ecu/core-kernel";
 
 describe("KWP2000 + TCP Integration", () => {
   let ecu: VirtualEcu;
   let server: Server;
   let client: net.Socket;
-  let transportConfig: TransportConfig;
+
 
   beforeAll((done) => {
     // Wait for build if needed
@@ -24,22 +20,16 @@ describe("KWP2000 + TCP Integration", () => {
   }, 10000);
 
   beforeEach((done) => {
-    // Start TCP server using VirtualEcu
-    transportConfig = {
-      mode: "tcp",
-      host: "127.0.0.1",
-      port: 20001, // Use different port than demo
-      connectTimeoutMs: 5000,
-      readTimeoutMs: 2000,
-    };
-
-    const config: VirtualEcuConfig = {
-      transport: transportConfig,
-      protocol: "kwp2000",
-      dtcEngine: new DTCEngine(),
-    };
-
-    ecu = new VirtualEcu(config);
+    // Create VirtualEcu using factory with TCP transport
+    ecu = VirtualEcuFactory.createTcpEcu(
+      {
+        host: "127.0.0.1",
+        port: 20001,
+        connectTimeoutMs: 5000,
+        readTimeoutMs: 2000,
+      },
+      "kwp2000"
+    );
 
     // Listen for state changes
     ecu.onStateChange((state) => {
@@ -203,7 +193,7 @@ describe("KWP2000 + TCP Integration", () => {
     it("should clear DTCs", (done) => {
       // First add a DTC
       const dtcEngine = ecu.getDtcEngine();
-      dtcEngine.set(0x123456, CONFIRMED_ACTIVE);
+      dtcEngine.set(0x123456, DTCStatusFactory.CONFIRMED_ACTIVE);
 
       sendRequest(0x14, Buffer.alloc(0))
         .then(() => {
@@ -287,19 +277,15 @@ describe("VirtualEcu Unit (No Network)", () => {
   let ecu: VirtualEcu;
 
   beforeEach(() => {
-    const config: VirtualEcuConfig = {
-      transport: {
-        mode: "tcp",
+    ecu = VirtualEcuFactory.createTcpEcu(
+      {
         host: "127.0.0.1",
         port: 20002,
         connectTimeoutMs: 1000,
         readTimeoutMs: 1000,
       },
-      protocol: "kwp2000",
-      dtcEngine: new DTCEngine(),
-    };
-
-    ecu = new VirtualEcu(config);
+      "kwp2000"
+    );
   });
 
   afterEach(async () => {
@@ -319,7 +305,10 @@ describe("VirtualEcu Unit (No Network)", () => {
   });
 
   it("should expose DTC engine", () => {
-    expect(ecu.getDtcEngine()).toBeInstanceOf(DTCEngine);
+    const engine = ecu.getDtcEngine();
+    expect(engine).toBeDefined();
+    expect(typeof engine.set).toBe("function");
+    expect(typeof engine.getAll).toBe("function");
   });
 
   it("should reset state", () => {

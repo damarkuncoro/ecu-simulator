@@ -2,6 +2,8 @@
  * KWP2000 Service Handler Interface
  * Each diagnostic service implements this to handle requests
  */
+import type { Kwp2000Frame, Kwp2000Response } from "./index";
+
 export interface KWP2000ServiceHandler {
   readonly serviceId: number;
   handle(frame: Kwp2000Frame): Kwp2000Response;

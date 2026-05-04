@@ -91,7 +91,12 @@ export class VirtualEcu {
    // State listeners
    private stateListeners: Array<(state: string, ctx: SessionContext) => void> = [];
 
-   constructor(config: VirtualEcuConfig) {
+   /** Expose DTC engine for testing/diagnostics (read-only) */
+    getDtcEngine(): IDTCEngine {
+      return this.dtcEngine;
+    }
+
+    constructor(config: VirtualEcuConfig) {
      // Initialize core ECU entity
      this.ecu = new ECU("ecu-001"); // In real implementation, this could come from config
 

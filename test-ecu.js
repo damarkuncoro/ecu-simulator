@@ -1,87 +1,91 @@
-const net = require('net');
+// Updated test-ecu.js using actual VirtualEcu implementation
+const { TcpTransport } = require("@ecu/transport-tcp");
+const { Kwp2000Router } = require("@ecu/kwp2000");
+const { SessionFSM } = require("@ecu/session-fsm");
+const { timingEngine } = require("@ecu/timing-engine");
+const { VirtualEcu } = require("@ecu/core-kernel");
+const { InMemoryEcuRepository } = require("@ecu/ecu-repository");
+const { InMemoryDtcRepository } = require("@ecu/dtc-repository");
+const { InMemoryDidRegistry } = require("@ecu/did-registry");
+const { IDTCEngine } = require("@ecu/dtc-engine");
+const { Logger } = require("@ecu/logger");
 
-// Minimal TCP server simulating ECU responding to KWP2000
-const server = net.createServer((socket) => {
-  console.log(`[${new Date().toISOString()}] ECU: Client connected from ${socket.remoteAddress}:${socket.remotePort}`);
+// Simple in-memory DTC engine implementation for testing
+class SimpleDtcEngine {
+  constructor() {
+    this.dtcs = new Map();
+  }
   
-  socket.on('data', (data) => {
-    console.log(`[${new Date().toISOString()}] ECU: Received ${data.length} bytes:`, data.toString('hex'));
-    
-    // Try to parse KWP2000/ISO14230 frame
-    if (data.length >= 3) {
-      const len = data[1];
-      const sid = data[2];
-      
-      console.log(`  -> Length: ${len}, Service: 0x${sid.toString(16).padStart(2, '0').toUpperCase()}`);
-      
-      let response;
-      switch (sid) {
-        case 0x00: // Positive response to 0x00
-        case 0x10: // DiagnosticSessionControl
-          response = Buffer.from([0x40 + sid, 0x01, 0x50, 0x00, 0x32]) + // P2max=50ms
-          console.log(`  <- Session control response`);
-          break;
-        case 0x11: // ECUReset
-          response = Buffer.from([0x40 + sid, 0x01]);
-          console.log(`  <- Reset response`);
-          break;
-        case 0x14: // ClearDTC
-          response = Buffer.from([0x40 + sid]);
-          console.log(`  <- Clear DTC response`);
-          break;
-        case 0x19: // ReadDTC
-          response = Buffer.from([0x40 + sid, 0x02, 0x00]); // 0 DTCs
-          console.log(`  <- Read DTC response: 0 DTCs`);
-          break;
-        case 0x22: // ReadDataByIdentifier
-          response = Buffer.from([0x40 + sid, data[3], data[4], 0x0F, 0xA0]); // 4000 RPM
-          console.log(`  <- Read DID response`);
-          break;
-        case 0x27: // SecurityAccess
-          if (data[2] % 2 === 1) {
-            // Request seed
-            response = Buffer.from([0x40 + sid, 0x01, 0x12, 0x34, 0x56, 0x78]);
-            console.log(`  <- Seed response`);
-          } else {
-            // Send key
-            response = Buffer.from([0x40 + sid, 0x02]);
-            console.log(`  <- Key accepted`);
-          }
-          break;
-        case 0x3E: // TesterPresent
-          response = Buffer.from([0x40 + sid, 0x00]);
-          console.log(`  <- TesterPresent response`);
-          break;
-        default:
-          // Negative response 0x7F, service, NRC=0x11 (service not supported)
-          response = Buffer.from([0x7F, sid, 0x11]);
-          console.log(`  <- NRC: Service not supported (0x11)`);
-      }
-      
-      if (response) {
-        socket.write(response);
-        console.log(`  ECU: Sent ${response.length} bytes:`, response.toString('hex'));
-      }
-    }
-  });
+  set(code, status, description) {
+    this.dtcs.set(code, { code, status, description });
+  }
   
-  socket.on('close', () => {
-    console.log(`[${new Date().toISOString()}] ECU: Client disconnected`);
-  });
+  getAll() {
+    return Array.from(this.dtcs.values());
+  }
   
-  socket.on('error', (err) => {
-    console.log(`[${new Date().toISOString()}] ECU: Socket error:`, err.message);
-  });
-});
+  clear() {
+    this.dtcs.clear();
+  }
+}
 
 const PORT = process.env.ECU_PORT || 20000;
-server.listen(PORT, () => {
-  console.log(`[${new Date().toISOString()}] ECU Simulator listening on port ${PORT}`);
-  console.log(`[${new Date().toISOString()}] Ready to accept diagnostic connections`);
-});
 
-process.on('SIGINT', () => {
-  console.log(`\n[${new Date().toISOString()}] Shutting down ECU simulator...`);
-  server.close();
-  process.exit(0);
-});
+async function startEcuSimulator() {
+  try {
+    // Create repositories
+    const ecuRepository = new InMemoryEcuRepository();
+    const dtcRepository = new InMemoryDtcRepository();
+    const didRegistry = new InMemoryDidRegistry();
+    
+    // Create DTC engine
+    const dtcEngine = new SimpleDtcEngine();
+    
+    // Create transport
+    const transport = new TcpTransport({ port: PORT });
+    
+    // Create protocol handler (KWP2000)
+    const protocolHandler = new Kwp2000Router();
+    
+    // Create Virtual ECU with all dependencies
+    const ecu = new VirtualEcu({
+      transport,
+      protocolHandler,
+      ecuRepository,
+      dtcRepository,
+      dtcEngine,
+      didRegistry,
+      session: {
+        timeoutMs: 5000,
+        testerPresentTimeoutMs: 2000,
+        securityTimeoutMs: 5000
+      }
+    });
+    
+    // Start the ECU
+    await ecu.start();
+    
+    console.log(`[${new Date().toISOString()}] ECU Simulator listening on port ${PORT}`);
+    console.log(`[${new Date().toISOString()}] Ready to accept diagnostic connections`);
+    console.log(`[${new Date().toISOString()}] Using real KWP2000 protocol implementation`);
+    
+    // Handle shutdown
+    process.on('SIGINT', async () => {
+      console.log(`\n[${new Date().toISOString()}] Shutting down ECU simulator...`);
+      await ecu.stop();
+      process.exit(0);
+    });
+    
+    return ecu;
+  } catch (error) {
+    console.error(`[${new Date().toISOString()}] Failed to start ECU simulator:`, error);
+    process.exit(1);
+  }
+}
+
+// Start the simulator if this file is run directly
+if (require.main === module) {
+  startEcuSimulator();
+}
+
+module.exports = { startEcuSimulator };

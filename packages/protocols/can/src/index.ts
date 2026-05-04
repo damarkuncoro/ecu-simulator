@@ -39,14 +39,14 @@ export interface NetworkLayerConfig {
   maxFrameData: number;
 }
 
- export class NetworkLayer {
-   private config: NetworkLayerConfig;
-   private logger: Logger;
+export class NetworkLayer {
+    public config: NetworkLayerConfig;
+    public logger: Logger;
 
-   constructor(config: NetworkLayerConfig) {
-     this.config = config;
-     this.logger = Logger.child("NetworkLayer");
-   }
+    constructor(config: NetworkLayerConfig) {
+      this.config = config;
+      this.logger = Logger.child("NetworkLayer");
+    }
 
   /** Encode CAN message into CAN frames */
   encodeMessage(message: CANMessage): CANFrame[] {
@@ -228,7 +228,7 @@ export class TransportLayer {
       if (!frame) continue;
 
        // Send frame (in real implementation, this would use CAN bus)
-       this.logger.debug(`Sending CAN frame: ID=0x${frame.id.toString(16)}, Data=${frame.data.toString("hex")}`);
+        this.networkLayer.logger.debug(`Sending CAN frame: ID=0x${frame.id.toString(16)}, Data=${frame.data.toString("hex")}`);
 
       // Handle flow control for multi-frame messages
       if (i === 0 && frames.length > 1) {

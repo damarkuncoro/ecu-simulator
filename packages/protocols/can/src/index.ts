@@ -1,10 +1,12 @@
-/**
- * @ecu/can - CAN Protocol (ISO 15765) Implementation
- * ISO 15765-2 (Network Layer) and ISO 15765-3 (Transport Layer)
- * Supports CAN diagnostics with segmentation, flow control, and addressing
- */
+ /**
+  * @ecu/can - CAN Protocol (ISO 15765) Implementation
+  * ISO 15765-2 (Network Layer) and ISO 15765-3 (Transport Layer)
+  * Supports CAN diagnostics with segmentation, flow control, and addressing
+  */
 
-// CAN implementation is standalone for now
+ import { Logger } from "@ecu/logger";
+
+ // CAN implementation is standalone for now
 
 // ─── CAN Frame Types (ISO 15765-2) ───────────────────────────────────────────
 
@@ -37,12 +39,14 @@ export interface NetworkLayerConfig {
   maxFrameData: number;
 }
 
-export class NetworkLayer {
-  private config: NetworkLayerConfig;
+ export class NetworkLayer {
+   private config: NetworkLayerConfig;
+   private logger: Logger;
 
-  constructor(config: NetworkLayerConfig) {
-    this.config = config;
-  }
+   constructor(config: NetworkLayerConfig) {
+     this.config = config;
+     this.logger = Logger.child("NetworkLayer");
+   }
 
   /** Encode CAN message into CAN frames */
   encodeMessage(message: CANMessage): CANFrame[] {
@@ -223,10 +227,8 @@ export class TransportLayer {
       const frame = frames[i];
       if (!frame) continue;
 
-      // Send frame (in real implementation, this would use CAN bus)
-      console.log(
-        `Sending CAN frame: ID=0x${frame.id.toString(16)}, Data=${frame.data.toString("hex")}`,
-      );
+       // Send frame (in real implementation, this would use CAN bus)
+       this.logger.debug(`Sending CAN frame: ID=0x${frame.id.toString(16)}, Data=${frame.data.toString("hex")}`);
 
       // Handle flow control for multi-frame messages
       if (i === 0 && frames.length > 1) {
@@ -278,10 +280,10 @@ export class TransportLayer {
     await this.delay(10);
   }
 
-  private processCompleteMessage(message: CANMessage): void {
-    console.log(`Received complete CAN message: ${message.data.length} bytes`);
-    // In real implementation, pass to upper layers (UDS, etc.)
-  }
+   private processCompleteMessage(message: CANMessage): void {
+     this.logger.debug(`Received complete CAN message: ${message.data.length} bytes`);
+     // In real implementation, pass to upper layers (UDS, etc.)
+   }
 
   private delay(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
@@ -290,26 +292,28 @@ export class TransportLayer {
 
 // ─── CAN Transport Adapter ──────────────────────────────────────────────────
 
-export class CANTransport {
-  private transportLayer: TransportLayer;
+ export class CANTransport {
+   private transportLayer: TransportLayer;
+   private logger: Logger;
 
-  constructor(config: TransportLayerConfig) {
-    this.transportLayer = new TransportLayer(config);
-  }
+   constructor(config: TransportLayerConfig) {
+     this.transportLayer = new TransportLayer(config);
+     this.logger = Logger.child("CANTransport");
+   }
 
   get mode(): string {
     return "can";
   }
 
-  async connect(): Promise<void> {
-    // Initialize CAN bus connection
-    console.log("CAN transport connected");
-  }
+   async connect(): Promise<void> {
+     // Initialize CAN bus connection
+     this.logger.info("CAN transport connected");
+   }
 
-  async disconnect(): Promise<void> {
-    // Close CAN bus connection
-    console.log("CAN transport disconnected");
-  }
+   async disconnect(): Promise<void> {
+     // Close CAN bus connection
+     this.logger.info("CAN transport disconnected");
+   }
 
   async send(data: Buffer): Promise<void> {
     const message: CANMessage = {
@@ -319,8 +323,8 @@ export class CANTransport {
       type: "single",
     };
 
-    await this.transportLayer.sendMessage(message);
-    console.log(`CAN sent ${data.length} bytes`);
+     await this.transportLayer.sendMessage(message);
+     this.logger.debug(`CAN sent ${data.length} bytes`);
   }
 
   async read(expectedBytes: number, timeoutMs?: number): Promise<Buffer> {

@@ -5,11 +5,12 @@
  */
 
 import { DTCEngine } from "@ecu/dtc-engine";
-import {
-  DEFAULT_SESSION_TIMEOUT_MS,
-  DEFAULT_P2_TIMEOUT_MS,
-  DEFAULT_P3_TIMEOUT_MS,
-} from "@ecu/protocol-constants";
+ import {
+   DEFAULT_SESSION_TIMEOUT_MS,
+   DEFAULT_P2_TIMEOUT_MS,
+   DEFAULT_P3_TIMEOUT_MS,
+ } from "@ecu/protocol-constants";
+ import { Logger } from "@ecu/logger";
 
 // ─── KWP2000 Frame Types ────────────────────────────────────────────────────────
 
@@ -98,15 +99,16 @@ export interface Kwp2000RouterConfig {
  */
 type ServiceHandlerFn = (frame: Kwp2000Frame) => Kwp2000Response;
 
-export class Kwp2000Router {
-  private dtcEngine: DTCEngine;
-  private currentSession: SessionType = SESSION_TYPES.DEFAULT;
-  private sessionStartTime: number = 0;
-  private lastActivityTime: number = 0;
-  private securitySeed: number = 0;
-  private testerPresentActive: boolean = false;
+ export class Kwp2000Router {
+   private dtcEngine: DTCEngine;
+   private currentSession: SessionType = SESSION_TYPES.DEFAULT;
+   private sessionStartTime: number = 0;
+   private lastActivityTime: number = 0;
+   private securitySeed: number = 0;
+   private testerPresentActive: boolean = false;
+   private logger: Logger;
 
-  // Timing parameters
+   // Timing parameters
   private readonly sessionTimeoutMs: number;
   private readonly p2TimeoutMs: number;
   private readonly p3TimeoutMs: number;
@@ -114,15 +116,18 @@ export class Kwp2000Router {
   // Service handler registry (OCP: handlers stored in map, extendable via registration)
   private readonly serviceHandlers: Map<number, ServiceHandlerFn>;
 
-  constructor(config: Kwp2000RouterConfig) {
-    this.dtcEngine = config.dtcEngine;
-    this.sessionTimeoutMs = config.sessionTimeoutMs ?? DEFAULT_SESSION_TIMEOUT_MS;
-    this.p2TimeoutMs = config.p2TimeoutMs ?? DEFAULT_P2_TIMEOUT_MS;
-    this.p3TimeoutMs = config.p3TimeoutMs ?? DEFAULT_P3_TIMEOUT_MS;
+   constructor(config: Kwp2000RouterConfig) {
+     this.dtcEngine = config.dtcEngine;
+     this.sessionTimeoutMs = config.sessionTimeoutMs ?? DEFAULT_SESSION_TIMEOUT_MS;
+     this.p2TimeoutMs = config.p2TimeoutMs ?? DEFAULT_P2_TIMEOUT_MS;
+     this.p3TimeoutMs = config.p3TimeoutMs ?? DEFAULT_P3_TIMEOUT_MS;
 
-    // Initialize service handler registry
-    this.serviceHandlers = this.initializeHandlers();
-  }
+     // Initialize logger
+     this.logger = Logger.child("Kwp2000Router");
+
+     // Initialize service handler registry
+     this.serviceHandlers = this.initializeHandlers();
+   }
 
   /**
    * Initialize service handler map
@@ -194,10 +199,10 @@ export class Kwp2000Router {
         frame.serviceId,
         NRC.SERVICE_NOT_SUPPORTED,
       );
-    } catch (error) {
-      console.error("KWP2000 processing error:", error);
-      return this.createNegativeResponse(frame.serviceId, NRC.GENERAL_REJECT);
-    }
+     } catch (error) {
+       this.logger.error("KWP2000 processing error", { error });
+       return this.createNegativeResponse(frame.serviceId, NRC.GENERAL_REJECT);
+     }
   }
 
   private handleDiagnosticSessionControl(frame: Kwp2000Frame): Kwp2000Response {

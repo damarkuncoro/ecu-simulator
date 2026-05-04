@@ -4,26 +4,27 @@
  * Now depends on abstractions (interfaces) rather than concrete implementations
  */
 
-import { ITransport } from "./domain/ports";
-import { IProtocolHandler } from "./domain/ports";
-import { IDTCEngine } from "./domain/ports/dtc-engine.port";
-import { IDIDRegistry } from "./domain/ports/did-registry.port";
-import { ECU } from "./domain/model/ecu";
-import { DTCStatus } from "./domain/model/dtc-status";
-import { IECURepository } from "./domain/repositories";
-import { IDTCRepository } from "./domain/repositories";
-import { ECUService } from "./application/services/ecu-service";
-import { DTCService } from "./application/services/dtc-service";
-import { SessionFSM, SessionContext } from "@ecu/session-fsm";
-import { timingEngine } from "@ecu/timing-engine";
-import { securityEngine } from "@ecu/security-engine";
-import { VirtualEcuFactory } from "./infrastructure/factories/virtual-ecu.factory";
-import {
-  DEFAULT_SESSION_TIMEOUT_MS,
-  DEFAULT_P3_TIMEOUT_MS,
-  DEFAULT_SECURITY_TIMEOUT_MS,
-} from "@ecu/protocol-constants";
-import * as DomainErrors from "./domain/errors";
+ import { ITransport } from "./domain/ports";
+ import { IProtocolHandler } from "./domain/ports";
+ import { IDTCEngine } from "./domain/ports/dtc-engine.port";
+ import { IDIDRegistry } from "./domain/ports/did-registry.port";
+ import { ECU } from "./domain/model/ecu";
+ import { DTCStatus } from "./domain/model/dtc-status";
+ import { IECURepository } from "./domain/repositories";
+ import { IDTCRepository } from "./domain/repositories";
+ import { ECUService } from "./application/services/ecu-service";
+ import { DTCService } from "./application/services/dtc-service";
+ import { SessionFSM, SessionContext } from "@ecu/session-fsm";
+ import { timingEngine } from "@ecu/timing-engine";
+ import { securityEngine } from "@ecu/security-engine";
+ import { Logger } from "@ecu/logger";
+ import { VirtualEcuFactory } from "./infrastructure/factories/virtual-ecu.factory";
+ import {
+   DEFAULT_SESSION_TIMEOUT_MS,
+   DEFAULT_P3_TIMEOUT_MS,
+   DEFAULT_SECURITY_TIMEOUT_MS,
+ } from "@ecu/protocol-constants";
+ import * as DomainErrors from "./domain/errors";
 
 // ─── Fault Injector Registry (OCP: open for extension via registration) ──────
 
@@ -32,21 +33,26 @@ export interface FaultInjector {
   inject(params: any): void;
 }
 
-export class FaultInjectorRegistry {
-  private injectors = new Map<string, FaultInjector>();
+ export class FaultInjectorRegistry {
+   private injectors = new Map<string, FaultInjector>();
+   private logger: Logger;
 
-  register(injector: FaultInjector): void {
-    this.injectors.set(injector.type, injector);
-  }
+   constructor() {
+     this.logger = Logger.child("FaultInjectorRegistry");
+   }
 
-  inject(type: string, params: any): void {
-    const injector = this.injectors.get(type);
-    if (injector) {
-      injector.inject(params);
-    } else {
-      console.warn(`[FaultInjector] Unknown fault type: ${type}`);
-    }
-  }
+   register(injector: FaultInjector): void {
+     this.injectors.set(injector.type, injector);
+   }
+
+   inject(type: string, params: any): void {
+     const injector = this.injectors.get(type);
+     if (injector) {
+       injector.inject(params);
+     } else {
+       this.logger.warn(`Unknown fault type: ${type}`);
+     }
+   }
 
   getRegisteredTypes(): string[] {
     return Array.from(this.injectors.keys());
@@ -76,29 +82,33 @@ export interface VirtualEcuConfig {
  * Dependencies are injected via constructor (Dependency Inversion Principle)
  * Each responsibility is separated into different services (Single Responsibility Principle)
  */
-export class VirtualEcu {
-   private transport: ITransport;
-   private protocolHandler: IProtocolHandler;
-   private ecu: ECU;
-   private session: SessionFSM;
-   private ecuService: ECUService;
-   private dtcService: DTCService;
-   private dtcEngine: IDTCEngine;
-   private didRegistry: IDIDRegistry;
-   private running = false;
-   private faultInjectorRegistry: FaultInjectorRegistry;
+ export class VirtualEcu {
+    private transport: ITransport;
+    private protocolHandler: IProtocolHandler;
+    private ecu: ECU;
+    private session: SessionFSM;
+    private ecuService: ECUService;
+    private dtcService: DTCService;
+    private dtcEngine: IDTCEngine;
+    private didRegistry: IDIDRegistry;
+    private running = false;
+    private faultInjectorRegistry: FaultInjectorRegistry;
+    private logger: Logger;
 
-   // State listeners
-   private stateListeners: Array<(state: string, ctx: SessionContext) => void> = [];
+    // State listeners
+    private stateListeners: Array<(state: string, ctx: SessionContext) => void> = [];
 
-   /** Expose DTC engine for testing/diagnostics (read-only) */
+    /** Expose DTC engine for testing/diagnostics (read-only) */
     getDtcEngine(): IDTCEngine {
       return this.dtcEngine;
     }
 
     constructor(config: VirtualEcuConfig) {
-     // Initialize core ECU entity
-     this.ecu = new ECU("ecu-001"); // In real implementation, this could come from config
+      // Initialize logger
+      this.logger = Logger.child("VirtualEcu");
+
+      // Initialize core ECU entity
+      this.ecu = new ECU("ecu-001"); // In real implementation, this could come from config
 
      // Inject infrastructure dependencies
      this.transport = config.transport;
@@ -150,23 +160,23 @@ export class VirtualEcu {
      // Sensor fault injector can be added similarly when implemented
    }
 
-  private setupTransportListeners(): void {
-    this.transport.on("connected", () => this.handleConnect());
-    this.transport.on("disconnected", () => this.handleDisconnect());
-    this.transport.on("data", (data: Buffer) => this.handleIncomingData(data));
-    this.transport.on("error", (error: any) => {
-      console.error("[ECU] Transport error:", error);
-    });
-  }
+   private setupTransportListeners(): void {
+     this.transport.on("connected", () => this.handleConnect());
+     this.transport.on("disconnected", () => this.handleDisconnect());
+     this.transport.on("data", (data: Buffer) => this.handleIncomingData(data));
+     this.transport.on("error", (error: any) => {
+       this.logger.error("Transport error", { error });
+     });
+   }
 
   private setupProtocolHandlerListeners(): void {
     // Protocol handler events can be set up here if needed
   }
 
-  /** Handle new client connection */
-  private async handleConnect(): Promise<void> {
-    console.log("[ECU] Client connected");
-    this.running = true;
+   /** Handle new client connection */
+   private async handleConnect(): Promise<void> {
+     this.logger.info("Client connected");
+     this.running = true;
 
     // Update ECU state
     this.ecu.powerOn();
@@ -179,10 +189,10 @@ export class VirtualEcu {
     this.emitStateChange();
   }
 
-  /** Handle client disconnection */
-  private handleDisconnect(): void {
-    console.log("[ECU] Client disconnected");
-    this.running = false;
+   /** Handle client disconnection */
+   private handleDisconnect(): void {
+     this.logger.info("Client disconnected");
+     this.running = false;
     
     // Update ECU state
     this.ecu.endSession();
@@ -192,15 +202,15 @@ export class VirtualEcu {
     this.emitStateChange();
   }
 
-  /** Handle incoming data from transport */
-  private async handleIncomingData(data: Buffer): Promise<void> {
-    try {
-      // Parse frame using protocol handler
-      const frame = await this.protocolHandler.parseFrame(data);
-      if (!frame) {
-        console.warn("[ECU] Invalid frame received");
-        return;
-      }
+   /** Handle incoming data from transport */
+   private async handleIncomingData(data: Buffer): Promise<void> {
+     try {
+       // Parse frame using protocol handler
+       const frame = await this.protocolHandler.parseFrame(data);
+       if (!frame) {
+         this.logger.warn("Invalid frame received");
+         return;
+       }
 
       // Process request through protocol handler
       const response = await this.protocolHandler.processRequest(frame);
@@ -208,29 +218,29 @@ export class VirtualEcu {
       // Format response into transport frame
       const responseFrame = await this.protocolHandler.formatResponse(response);
 
-      // Send response
-      await this.transport.send(responseFrame);
+       // Send response
+       await this.transport.send(responseFrame);
 
-    } catch (err) {
-      console.error("[ECU] Error handling data:", err);
-      // Optionally send error response based on protocol
-    }
-  }
+     } catch (err) {
+       this.logger.error("Error handling data", { error: err });
+       // Optionally send error response based on protocol
+     }
+   }
 
-  /** Start the ECU (listen for connections) */
-  async start(): Promise<void> {
-    console.log(`[ECU] Starting Virtual ECU...`);
-    await this.transport.connect();
-    this.emit("started");
-  }
+   /** Start the ECU (listen for connections) */
+   async start(): Promise<void> {
+     this.logger.info("Starting Virtual ECU...");
+     await this.transport.connect();
+     this.emit("started");
+   }
 
-  /** Stop the ECU */
-  async stop(): Promise<void> {
-    console.log("[ECU] Stopping Virtual ECU");
-    await this.transport.disconnect();
-    this.running = false;
-    this.emit("stopped");
-  }
+   /** Stop the ECU */
+   async stop(): Promise<void> {
+     this.logger.info("Stopping Virtual ECU");
+     await this.transport.disconnect();
+     this.running = false;
+     this.emit("stopped");
+   }
 
   /** Check if ECU is running */
   isRunning(): boolean {
@@ -307,7 +317,7 @@ export class VirtualEcu {
      // Internal event system — can be expanded
      // In a more complete implementation, this could use an event emitter
      if (event === "started" || event === "stopped") {
-       console.log(`[ECU] ${event}`);
+       this.logger.info(`ECU ${event}`);
      }
    }
 }

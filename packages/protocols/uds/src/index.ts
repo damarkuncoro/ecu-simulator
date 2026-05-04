@@ -8,11 +8,12 @@ import { DTCEngine } from "@ecu/dtc-engine";
 import { didRegistry } from "@ecu/did-registry";
 import { securityEngine } from "@ecu/security-engine";
 import { timingEngine } from "@ecu/timing-engine";
-import {
-  DEFAULT_SESSION_TIMEOUT_MS,
-  DEFAULT_P2_TIMEOUT_MS,
-  DEFAULT_P3_TIMEOUT_MS,
-} from "@ecu/protocol-constants";
+ import {
+   DEFAULT_SESSION_TIMEOUT_MS,
+   DEFAULT_P2_TIMEOUT_MS,
+   DEFAULT_P3_TIMEOUT_MS,
+ } from "@ecu/protocol-constants";
+ import { Logger } from "@ecu/logger";
 
 // ─── UDS Service Identifiers ─────────────────────────────────────────────────
 
@@ -141,15 +142,16 @@ export interface UdsRouterConfig {
   s3TimeoutMs: number; // Tester present timeout
 }
 
-export class UdsRouter {
-  private dtcEngine: DTCEngine;
-  private currentSession: UdsSessionType = UDS_SESSIONS.DEFAULT;
-  private sessionStartTime: number = 0;
-  private lastActivityTime: number = 0;
-  private testerPresentActive: boolean = false;
-  private securityLevel: number = 0;
+ export class UdsRouter {
+   private dtcEngine: DTCEngine;
+   private currentSession: UdsSessionType = UDS_SESSIONS.DEFAULT;
+   private sessionStartTime: number = 0;
+   private lastActivityTime: number = 0;
+   private testerPresentActive: boolean = false;
+   private securityLevel: number = 0;
+   private logger: Logger;
 
-  // Timing parameters
+   // Timing parameters
   private readonly sessionTimeoutMs: number;
   private readonly p2TimeoutMs: number;
   private readonly p2StarTimeoutMs: number;
@@ -158,17 +160,20 @@ export class UdsRouter {
   // Service handler registry (OCP)
   private readonly serviceHandlers: Map<number, (request: UdsRequest) => UdsResponse>;
 
-  constructor(config: UdsRouterConfig) {
-    this.dtcEngine = config.dtcEngine;
-    this.sessionTimeoutMs = config.sessionTimeoutMs ?? DEFAULT_SESSION_TIMEOUT_MS;
-    this.p2TimeoutMs = config.p2TimeoutMs ?? DEFAULT_P2_TIMEOUT_MS;
-    this.p2StarTimeoutMs = config.p2StarTimeoutMs ?? DEFAULT_P3_TIMEOUT_MS;
-    this.s3TimeoutMs = config.s3TimeoutMs ?? DEFAULT_P3_TIMEOUT_MS;
-    this.securityLevel = 0;
+   constructor(config: UdsRouterConfig) {
+     this.dtcEngine = config.dtcEngine;
+     this.sessionTimeoutMs = config.sessionTimeoutMs ?? DEFAULT_SESSION_TIMEOUT_MS;
+     this.p2TimeoutMs = config.p2TimeoutMs ?? DEFAULT_P2_TIMEOUT_MS;
+     this.p2StarTimeoutMs = config.p2StarTimeoutMs ?? DEFAULT_P3_TIMEOUT_MS;
+     this.s3TimeoutMs = config.s3TimeoutMs ?? DEFAULT_P3_TIMEOUT_MS;
+     this.securityLevel = 0;
 
-    // Initialize service handlers
-    this.serviceHandlers = this.initializeHandlers();
-  }
+     // Initialize logger
+     this.logger = Logger.child("UdsRouter");
+
+     // Initialize service handlers
+     this.serviceHandlers = this.initializeHandlers();
+   }
 
   /**
    * Initialize service handler map
@@ -283,8 +288,8 @@ export class UdsRouter {
       );
     }
 
-    // In a real implementation, this would trigger actual ECU reset
-    console.log(`ECU reset requested: type 0x${resetType.toString(16)}`);
+     // In a real implementation, this would trigger actual ECU reset
+     this.logger.info(`ECU reset requested: type 0x${resetType.toString(16)}`);
 
     return {
       serviceId: request.serviceId,
@@ -495,8 +500,8 @@ export class UdsRouter {
       );
     }
 
-    // In real implementation, this would enable/disable DTC storage
-    console.log(`DTC setting control: ${controlType === 0x01 ? "ON" : "OFF"}`);
+     // In real implementation, this would enable/disable DTC storage
+     this.logger.info(`DTC setting control: ${controlType === 0x01 ? "ON" : "OFF"}`);
 
     return {
       serviceId: request.serviceId,
@@ -525,9 +530,9 @@ export class UdsRouter {
       );
     }
 
-    console.log(
-      `Communication control: type=${controlType}, comm=${communicationType}`,
-    );
+     this.logger.info(
+       `Communication control: type=${controlType}, comm=${communicationType}`
+     );
 
     return {
       serviceId: request.serviceId,
@@ -556,9 +561,9 @@ export class UdsRouter {
       );
     }
 
-    console.log(
-      `Routine control: type=${routineControlType}, id=0x${routineIdentifier.toString(16)}`,
-    );
+     this.logger.info(
+       `Routine control: type=${routineControlType}, id=0x${routineIdentifier.toString(16)}`
+     );
 
     // Mock routine result
     const routineStatus = 0x01; // Completed successfully
@@ -591,13 +596,13 @@ export class UdsRouter {
          request.serviceId,
          UDS_NRC.SERVICE_NOT_SUPPORTED,
        );
-     } catch (error) {
-       console.error("UDS processing error:", error);
-       return this.createNegativeResponse(
-         request.serviceId,
-         UDS_NRC.GENERAL_REJECT,
-       );
-     }
+      } catch (error) {
+        this.logger.error("UDS processing error", { error });
+        return this.createNegativeResponse(
+          request.serviceId,
+          UDS_NRC.GENERAL_REJECT,
+        );
+      }
    }
 
    private createNegativeResponse(serviceId: number, nrc: number): UdsResponse {

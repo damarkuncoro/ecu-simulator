@@ -4,9 +4,10 @@
  * Handles 5-baud initialization and K-Line communication.
  */
 
-import { AbstractTransport, TransportConfig } from "@ecu/transport-abstract";
+ import { AbstractTransport, TransportConfig } from "@ecu/transport-abstract";
+ import { Logger } from "@ecu/logger";
 
-export const PKG = "@ecu/iso9141";
+ export const PKG = "@ecu/iso9141";
 
 // ─── ISO9141 Frame Types ──────────────────────────────────────────────────────
 
@@ -31,21 +32,23 @@ export interface Iso9141Frame {
 
 // ─── ISO9141 Protocol Handler ────────────────────────────────────────────────
 
-export class Iso9141Protocol {
-  private config: Required<Iso9141Config>;
-  private transport: AbstractTransport;
-  private initialized = false;
+ export class Iso9141Protocol {
+   private config: Required<Iso9141Config>;
+   private transport: AbstractTransport;
+   private initialized = false;
+   private logger: Logger;
 
-  constructor(transport: AbstractTransport, config: Iso9141Config = {}) {
-    this.transport = transport;
-    this.config = {
-      ecuAddress: config.ecuAddress ?? 0x33,
-      testerAddress: config.testerAddress ?? 0xf1,
-      baudRate: config.baudRate ?? 10400,
-      responseTimeoutMs: config.responseTimeoutMs ?? 100,
-      interByteTimeoutMs: config.interByteTimeoutMs ?? 20,
-    };
-  }
+   constructor(transport: AbstractTransport, config: Iso9141Config = {}) {
+     this.transport = transport;
+     this.config = {
+       ecuAddress: config.ecuAddress ?? 0x33,
+       testerAddress: config.testerAddress ?? 0xf1,
+       baudRate: config.baudRate ?? 10400,
+       responseTimeoutMs: config.responseTimeoutMs ?? 100,
+       interByteTimeoutMs: config.interByteTimeoutMs ?? 20,
+     };
+     this.logger = Logger.child("Iso9141Protocol");
+   }
 
   /** Perform ISO9141 5-baud initialization sequence */
   async initialize(): Promise<void> {
@@ -80,11 +83,11 @@ export class Iso9141Protocol {
 
       if (keyword1.length === 0 || keyword2.length === 0) {
         throw new Error("Failed to receive keyword bytes");
-      }
-
-      console.log(
-        `ISO9141 initialized: KW1=0x${keyword1[0]?.toString(16)}, KW2=0x${keyword2[0]?.toString(16)}`,
-      );
+       }
+ 
+       this.logger.info(
+         `ISO9141 initialized: KW1=0x${keyword1[0]?.toString(16)}, KW2=0x${keyword2[0]?.toString(16)}`,
+       );
 
       this.initialized = true;
     } catch (error) {

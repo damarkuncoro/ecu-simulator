@@ -209,14 +209,16 @@ export interface TransportLayerConfig extends NetworkLayerConfig {
 }
 
 export class TransportLayer {
-  private networkLayer: NetworkLayer;
-  private config: TransportLayerConfig;
-  private messageBuffer: Map<number, CANFrame[]> = new Map();
+   private networkLayer: NetworkLayer;
+   private config: TransportLayerConfig;
+   private messageBuffer: Map<number, CANFrame[]> = new Map();
+   private logger: Logger;
 
-  constructor(config: TransportLayerConfig) {
-    this.config = config;
-    this.networkLayer = new NetworkLayer(config);
-  }
+   constructor(config: TransportLayerConfig) {
+     this.config = config;
+     this.networkLayer = new NetworkLayer(config);
+     this.logger = Logger.child("TransportLayer");
+   }
 
   /** Send diagnostic message with transport layer handling */
   async sendMessage(message: CANMessage): Promise<void> {

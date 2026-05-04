@@ -318,7 +318,7 @@ describe("VirtualEcu Unit (No Network)", () => {
   });
 
   it("should inject DTC fault", () => {
-    ecu.injectFault("dtc", { code: 0x123456, status: CONFIRMED_ACTIVE });
+    ecu.injectFault("dtc", { code: 0x123456, status: DTCStatusFactory.CONFIRMED_ACTIVE });
     const dtcs = ecu.getDtcEngine().getByStatusMask(0xff);
     expect(dtcs.length).toBe(1);
     expect(dtcs[0]!.code).toBe(0x123456);

@@ -10,7 +10,7 @@ const { app, BrowserWindow, ipcMain, dialog } = electron;
 import * as path from 'path';
 import { ECUDiagnosticApp } from '../ECUDiagnosticApp';
 
-let mainWindow: BrowserWindow | null = null;
+let mainWindow: any = null;
 let ecuApp: ECUDiagnosticApp | null = null;
 
 function createWindow(): void {
@@ -96,25 +96,25 @@ ipcMain.handle('ecu-disconnect', async () => {
   return handler ? await handler() : { success: false, error: 'Handler not found' };
 });
 
-ipcMain.handle('ecu-read-did', async (_, params) => {
+ipcMain.handle('ecu-read-did', async (event: any, params: any) => {
   if (!ecuApp) return { success: false, error: 'ECU App not initialized' };
   const handler = ecuApp.getIPCHandler('read-did');
   return handler ? await handler(params) : { success: false, error: 'Handler not found' };
 });
 
-ipcMain.handle('ecu-write-did', async (_, params) => {
+ipcMain.handle('ecu-write-did', async (event: any, params: any) => {
   if (!ecuApp) return { success: false, error: 'ECU App not initialized' };
   const handler = ecuApp.getIPCHandler('write-did');
   return handler ? await handler(params) : { success: false, error: 'Handler not found' };
 });
 
-ipcMain.handle('ecu-security-seed', async (_, params) => {
+ipcMain.handle('ecu-security-seed', async (event: any, params: any) => {
   if (!ecuApp) return { success: false, error: 'ECU App not initialized' };
   const handler = ecuApp.getIPCHandler('security-seed');
   return handler ? await handler(params) : { success: false, error: 'Handler not found' };
 });
 
-ipcMain.handle('ecu-security-key', async (_, params) => {
+ipcMain.handle('ecu-security-key', async (event: any, params: any) => {
   if (!ecuApp) return { success: false, error: 'ECU App not initialized' };
   const handler = ecuApp.getIPCHandler('security-key');
   return handler ? await handler(params) : { success: false, error: 'Handler not found' };
@@ -132,7 +132,7 @@ ipcMain.handle('ecu-get-faults', () => {
   return handler ? handler() : { success: false, error: 'Handler not found' };
 });
 
-ipcMain.handle('ecu-trigger-fault', (_, params) => {
+ipcMain.handle('ecu-trigger-fault', (event: any, params: any) => {
   if (!ecuApp) return { success: false, error: 'ECU App not initialized' };
   const handler = ecuApp.getIPCHandler('trigger-fault');
   return handler ? handler(params) : { success: false, error: 'Handler not found' };

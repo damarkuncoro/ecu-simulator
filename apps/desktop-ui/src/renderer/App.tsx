@@ -5,20 +5,9 @@ import {
   Typography,
   Container,
   Grid,
-  Paper,
-  Button,
-  Box,
-  Chip,
   Tabs,
   Tab,
-  Card,
-  CardContent,
-  CardActions,
-  List,
-  ListItem,
-  ListItemText,
-  ListItemIcon,
-  Divider,
+  Box,
   Alert,
   Snackbar,
   Dialog,
@@ -26,23 +15,11 @@ import {
   DialogContent,
   DialogActions,
   TextField,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
 } from '@mui/material';
 import {
-  PlayArrow as PlayIcon,
-  Stop as StopIcon,
-  Security as SecurityIcon,
-  Warning as WarningIcon,
-  Error as ErrorIcon,
-  CheckCircle as CheckCircleIcon,
-  Settings as SettingsIcon,
   Dashboard as DashboardIcon,
-  Memory as MemoryIcon,
-  Speed as SpeedIcon,
 } from '@mui/icons-material';
+import { ConnectionPanel, SessionPanel, DataPanel, FaultPanel, StatusBar } from './components';
 
 interface Session {
   id: string;
@@ -111,14 +88,6 @@ export function App() {
     key: '',
   });
 
-  // DID dialog state
-  const [didDialog, setDidDialog] = useState({
-    open: false,
-    id: 0x0c00,
-    value: '',
-    isReading: true,
-  });
-
   useEffect(() => {
     loadSession();
     loadFaults();
@@ -157,7 +126,8 @@ export function App() {
       const result = await window.ecuAPI.connect();
       if (result.success) {
         showSnackbar('Connected to ECU', 'success');
-        loadSession();
+        await loadSession();
+        await loadFaults();
       } else {
         showSnackbar(`Connection failed: ${result.error}`, 'error');
       }
@@ -171,7 +141,8 @@ export function App() {
       const result = await window.ecuAPI.disconnect();
       if (result.success) {
         showSnackbar('Disconnected from ECU', 'success');
-        loadSession();
+        await loadSession();
+        await loadFaults();
       } else {
         showSnackbar(`Disconnection failed: ${result.error}`, 'error');
       }
@@ -180,11 +151,19 @@ export function App() {
     }
   };
 
-  const handleSecuritySeed = async (level: number) => {
+  const handleStartSession = async (sessionType: string) => {
+    // Mock session start - in real implementation this would call ECU
+    if (session) {
+      setSession(prev => prev ? { ...prev, currentSession: sessionType } : null);
+      showSnackbar(`Started ${sessionType} session`, 'success');
+    }
+  };
+
+  const handleSecurityAccess = async () => {
     try {
-      const result = await window.ecuAPI.getSecuritySeed(level);
+      const result = await window.ecuAPI.getSecuritySeed(1);
       if (result.success && result.seed) {
-        setSecurityDialog(prev => ({ ...prev, seed: result.seed!, level }));
+        setSecurityDialog(prev => ({ ...prev, seed: result.seed!, level: 1 }));
         showSnackbar('Security seed generated', 'success');
       } else {
         showSnackbar(`Failed to get seed: ${result.error}`, 'error');
@@ -199,6 +178,9 @@ export function App() {
       const result = await window.ecuAPI.verifySecurityKey(level, key);
       if (result.success) {
         showSnackbar('Security key accepted', 'success');
+        if (session) {
+          setSession(prev => prev ? { ...prev, securityLevel: level } : null);
+        }
         setSecurityDialog({ open: false, level: 1, seed: '', key: '' });
       } else {
         showSnackbar(`Security key rejected: ${result.error}`, 'error');
@@ -208,18 +190,55 @@ export function App() {
     }
   };
 
+  const handleReadDID = async (id: number) => {
+    try {
+      const result = await window.ecuAPI.readDID(id);
+      if (result.success) {
+        showSnackbar(`Successfully read DID 0x${id.toString(16)}`, 'success');
+        return result;
+      } else {
+        showSnackbar(`Failed to read DID: ${result.error}`, 'error');
+        return result;
+      }
+    } catch (error) {
+      showSnackbar('Failed to read DID', 'error');
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  };
+
+  const handleWriteDID = async (id: number, data: string) => {
+    try {
+      const result = await window.ecuAPI.writeDID(id, Buffer.from(data, 'hex'));
+      if (result.success) {
+        showSnackbar(`Successfully wrote DID 0x${id.toString(16)}`, 'success');
+        return result;
+      } else {
+        showSnackbar(`Failed to write DID: ${result.error}`, 'error');
+        return result;
+      }
+    } catch (error) {
+      showSnackbar('Failed to write DID', 'error');
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  };
+
   const handleTriggerFault = async (faultId: string) => {
     try {
       const result = await window.ecuAPI.triggerFault(faultId);
       if (result.success) {
         showSnackbar('Fault triggered successfully', 'success');
-        loadFaults();
+        await loadFaults();
       } else {
         showSnackbar(`Failed to trigger fault: ${result.error}`, 'error');
       }
     } catch (error) {
       showSnackbar('Failed to trigger fault', 'error');
     }
+  };
+
+  const handleRefreshFaults = async () => {
+    await loadFaults();
+    showSnackbar('Faults refreshed', 'info');
   };
 
   const getSeverityColor = (severity: string) => {
@@ -250,192 +269,62 @@ export function App() {
           <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
             ECU Simulator - Diagnostic Dashboard
           </Typography>
-          {session && (
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <Chip
-                label={session.connected ? 'Connected' : 'Disconnected'}
-                color={session.connected ? 'success' : 'error'}
-                size="small"
-              />
-              <Typography variant="body2">
-                Session: {session.protocol.toUpperCase()}
-              </Typography>
-            </Box>
-          )}
         </Toolbar>
       </AppBar>
 
+      <StatusBar session={session} faults={faults} activeFaults={activeFaults} />
+
       <Container maxWidth="xl" sx={{ mt: 2, flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
-        {/* Connection Controls */}
-        <Paper sx={{ p: 2, mb: 2 }}>
-          <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-            <Button
-              variant="contained"
-              color="success"
-              startIcon={<PlayIcon />}
-              onClick={handleConnect}
-              disabled={session?.connected}
-            >
-              Connect
-            </Button>
-            <Button
-              variant="contained"
-              color="error"
-              startIcon={<StopIcon />}
-              onClick={handleDisconnect}
-              disabled={!session?.connected}
-            >
-              Disconnect
-            </Button>
-            <Button
-              variant="outlined"
-              startIcon={<SecurityIcon />}
-              onClick={() => setSecurityDialog({ open: true, level: 1, seed: '', key: '' })}
-            >
-              Security Access
-            </Button>
-          </Box>
-        </Paper>
+        <Grid container spacing={3}>
+          {/* Connection Panel */}
+          <Grid item xs={12} lg={4}>
+            <ConnectionPanel
+              session={session}
+              onConnect={handleConnect}
+              onDisconnect={handleDisconnect}
+            />
+          </Grid>
+
+          {/* Session Panel */}
+          <Grid item xs={12} lg={8}>
+            <SessionPanel
+              session={session}
+              onStartSession={handleStartSession}
+              onSecurityAccess={handleSecurityAccess}
+            />
+          </Grid>
+        </Grid>
 
         {/* Main Content */}
-        <Box sx={{ flexGrow: 1 }}>
+        <Box sx={{ mt: 3, flexGrow: 1 }}>
           <Tabs value={tabValue} onChange={(_, newValue) => setTabValue(newValue)}>
-            <Tab label="Overview" />
-            <Tab label="Fault Injection" />
             <Tab label="Data Monitor" />
+            <Tab label="Fault Injection" />
           </Tabs>
 
-          {/* Overview Tab */}
+          {/* Data Monitor Tab */}
           {tabValue === 0 && (
-            <Grid container spacing={2} sx={{ mt: 1 }}>
-              <Grid item xs={12} md={6}>
-                <Card>
-                  <CardContent>
-                    <Typography variant="h6" gutterBottom>
-                      Session Status
-                    </Typography>
-                    {session ? (
-                      <Box>
-                        <Typography>Protocol: {session.protocol}</Typography>
-                        <Typography>Connected: {session.connected ? 'Yes' : 'No'}</Typography>
-                        <Typography>Requests: {session.stats.requestsSent}</Typography>
-                        <Typography>Responses: {session.stats.responsesReceived}</Typography>
-                        <Typography>Errors: {session.stats.errors}</Typography>
-                      </Box>
-                    ) : (
-                      <Typography color="text.secondary">No active session</Typography>
-                    )}
-                  </CardContent>
-                </Card>
-              </Grid>
-
-              <Grid item xs={12} md={6}>
-                <Card>
-                  <CardContent>
-                    <Typography variant="h6" gutterBottom>
-                      Fault Status
-                    </Typography>
-                    {faultStats ? (
-                      <Box>
-                        <Typography>Enabled: {faultStats.enabled ? 'Yes' : 'No'}</Typography>
-                        <Typography>Total Faults: {faultStats.totalFaults}</Typography>
-                        <Typography>Active Faults: {faultStats.activeFaults}</Typography>
-                        <Typography>Triggered: {faultStats.triggeredCount}</Typography>
-                      </Box>
-                    ) : (
-                      <Typography color="text.secondary">Fault data unavailable</Typography>
-                    )}
-                  </CardContent>
-                </Card>
-              </Grid>
-            </Grid>
+            <Box sx={{ mt: 2 }}>
+              <DataPanel
+                session={session}
+                onReadDID={handleReadDID}
+                onWriteDID={handleWriteDID}
+              />
+            </Box>
           )}
 
           {/* Fault Injection Tab */}
           {tabValue === 1 && (
-            <Grid container spacing={2} sx={{ mt: 1 }}>
-              <Grid item xs={12}>
-                <Card>
-                  <CardContent>
-                    <Typography variant="h6" gutterBottom>
-                      Fault Injection Control
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                      Manually trigger faults for testing diagnostic responses
-                    </Typography>
-                    <List>
-                      {faults.map((fault) => (
-                        <ListItem key={fault.id}>
-                          <ListItemIcon>
-                            {getSeverityIcon(fault.severity)}
-                          </ListItemIcon>
-                          <ListItemText
-                            primary={fault.name}
-                            secondary={
-                              <Box>
-                                <Typography variant="body2" color="text.secondary">
-                                  {fault.description}
-                                </Typography>
-                                <Box sx={{ mt: 1 }}>
-                                  <Chip
-                                    label={fault.category}
-                                    size="small"
-                                    sx={{ mr: 1 }}
-                                  />
-                                  <Chip
-                                    label={fault.severity}
-                                    size="small"
-                                    color={getSeverityColor(fault.severity)}
-                                  />
-                                  <Chip
-                                    label={`Triggered: ${fault.triggerCount}`}
-                                    size="small"
-                                    variant="outlined"
-                                    sx={{ ml: 1 }}
-                                  />
-                                </Box>
-                              </Box>
-                            }
-                          />
-                          <Button
-                            variant="outlined"
-                            color="warning"
-                            onClick={() => handleTriggerFault(fault.id)}
-                            disabled={activeFaults.some(f => f.id === fault.id)}
-                          >
-                            Trigger
-                          </Button>
-                        </ListItem>
-                      ))}
-                    </List>
-                  </CardContent>
-                </Card>
-              </Grid>
-            </Grid>
-          )}
-
-          {/* Data Monitor Tab */}
-          {tabValue === 2 && (
-            <Grid container spacing={2} sx={{ mt: 1 }}>
-              <Grid item xs={12}>
-                <Card>
-                  <CardContent>
-                    <Typography variant="h6" gutterBottom>
-                      Data Identifier Monitor
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                      Read and monitor ECU data identifiers (DIDs)
-                    </Typography>
-                    <Button
-                      variant="contained"
-                      onClick={() => setDidDialog({ open: true, id: 0x0c00, value: '', isReading: true })}
-                    >
-                      Read Engine RPM (0x0C00)
-                    </Button>
-                  </CardContent>
-                </Card>
-              </Grid>
-            </Grid>
+            <Box sx={{ mt: 2 }}>
+              <FaultPanel
+                session={session}
+                faults={faults}
+                activeFaults={activeFaults}
+                stats={faultStats}
+                onTriggerFault={handleTriggerFault}
+                onRefreshFaults={handleRefreshFaults}
+              />
+            </Box>
           )}
         </Box>
       </Container>
@@ -445,17 +334,20 @@ export function App() {
         <DialogTitle>Security Access</DialogTitle>
         <DialogContent>
           <Box sx={{ mt: 1 }}>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              Request a security seed and provide the corresponding key for authentication.
+            </Typography>
             <Button
               variant="outlined"
-              onClick={() => handleSecuritySeed(securityDialog.level)}
+              onClick={() => handleSecurityAccess()}
               sx={{ mb: 2 }}
             >
-              Request Seed (Level {securityDialog.level})
+              Request Seed (Level 1)
             </Button>
             {securityDialog.seed && (
               <TextField
                 fullWidth
-                label="Seed"
+                label="Seed (hex)"
                 value={securityDialog.seed}
                 InputProps={{ readOnly: true }}
                 sx={{ mb: 2 }}
@@ -463,10 +355,10 @@ export function App() {
             )}
             <TextField
               fullWidth
-              label="Key"
+              label="Key (hex)"
               value={securityDialog.key}
               onChange={(e) => setSecurityDialog(prev => ({ ...prev, key: e.target.value }))}
-              placeholder="Enter security key"
+              placeholder="Enter security key (e.g., 12345678)"
             />
           </Box>
         </DialogContent>
@@ -476,7 +368,8 @@ export function App() {
           </Button>
           <Button
             onClick={() => handleSecurityKey(securityDialog.level, securityDialog.key)}
-            disabled={!securityDialog.key}
+            disabled={!securityDialog.key.trim()}
+            variant="contained"
           >
             Verify Key
           </Button>

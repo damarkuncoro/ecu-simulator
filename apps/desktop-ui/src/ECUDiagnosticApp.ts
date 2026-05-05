@@ -3,7 +3,21 @@
  * Electron + React-based diagnostic interface for ECU Simulator
  */
 
-import { Logger } from "@ecu/logger";
+// Simple logger for demo purposes
+class Logger {
+  info(message: string, meta?: any) {
+    console.log(`[INFO] ${message}`, meta);
+  }
+  error(message: string, meta?: any) {
+    console.error(`[ERROR] ${message}`, meta);
+  }
+  warn(message: string, meta?: any) {
+    console.warn(`[WARN] ${message}`, meta);
+  }
+  debug(message: string, meta?: any) {
+    console.debug(`[DEBUG] ${message}`, meta);
+  }
+}
 
 interface DiagnosticSession {
   id: string;

@@ -3,8 +3,8 @@
  * Exposes secure APIs to the renderer process
  */
 
-declare const require: any;
-const { contextBridge, ipcRenderer } = require('electron');
+const electron = require('electron');
+const { contextBridge, ipcRenderer } = electron;
 
 interface ECUAPI {
   connect(): Promise<{ success: boolean; error?: string }>;

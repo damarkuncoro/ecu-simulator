@@ -5,17 +5,23 @@
 
 // Simple logger for demo purposes
 class Logger {
+  constructor(name?: string) {
+    this.name = name || 'default';
+  }
+
+  private name: string;
+
   info(message: string, meta?: any) {
-    console.log(`[INFO] ${message}`, meta);
+    console.log(`[${this.name}] [INFO] ${message}`, meta);
   }
   error(message: string, meta?: any) {
-    console.error(`[ERROR] ${message}`, meta);
+    console.error(`[${this.name}] [ERROR] ${message}`, meta);
   }
   warn(message: string, meta?: any) {
-    console.warn(`[WARN] ${message}`, meta);
+    console.warn(`[${this.name}] [WARN] ${message}`, meta);
   }
   debug(message: string, meta?: any) {
-    console.debug(`[DEBUG] ${message}`, meta);
+    console.debug(`[${this.name}] [DEBUG] ${message}`, meta);
   }
 }
 

@@ -103,7 +103,10 @@ class TimingEngine {
     /** Wait for P3 timing before allowing next request */
     waitForNextRequest() {
         return new Promise((resolve) => {
-            this.setTimer("next_request", resolve, this.currentTiming.p3);
+            this.setTimer("next_request", () => {
+                this.clearTimer("next_request");
+                resolve();
+            }, this.currentTiming.p3);
         });
     }
     /** Check if timing allows new request */

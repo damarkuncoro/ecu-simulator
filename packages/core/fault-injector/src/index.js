@@ -190,6 +190,8 @@ class FaultInjector {
     triggerFault(id) {
         if (!this.config.enabled)
             return false;
+        if (this.activeFaults.size >= this.config.maxConcurrentFaults)
+            return false;
         const fault = this.faults.get(id);
         if (!fault)
             return false;

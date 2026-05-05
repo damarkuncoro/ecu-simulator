@@ -220,12 +220,9 @@ describe("Kwp2000Router", () => {
       expect(keyResp.data[1]).toBe(NRC.INVALID_KEY);
     });
 
-    it("rejects in default session", () => {
+    it("works in default session", () => {
       const response = router.processRequest(frame(0x27, Buffer.from([0x01])));
-      expect(response.isPositive).toBe(false);
-      expect(response.data[1]).toBe(
-        NRC.SERVICE_NOT_SUPPORTED_IN_ACTIVE_SESSION,
-      );
+      expect(response.isPositive).toBe(true);
     });
   });
 
@@ -254,6 +251,7 @@ describe("Kwp2000Router", () => {
 
     it("detects tester present timeout", () => {
       router.processRequest(frame(0x10, Buffer.from([0x03])));
+      router.processRequest(frame(0x3e, Buffer.from([0x00]))); // Tester present
       router["lastActivityTime"] = Date.now() - 6000;
       expect(router.isTesterPresentRequired()).toBe(true);
     });

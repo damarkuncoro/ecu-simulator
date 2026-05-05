@@ -41,13 +41,6 @@ exports.rootLogger = exports.Logger = void 0;
 const fs = __importStar(require("fs"));
 // ─── Logger ──────────────────────────────────────────────────────────────────
 class Logger {
-    static { this.level = process.env["LOG_LEVEL"] ?? "info"; }
-    static { this.LEVELS = {
-        debug: 0,
-        info: 1,
-        warn: 2,
-        error: 3,
-    }; }
     constructor(tag) {
         this.captures = [];
         this.tag = tag;
@@ -125,6 +118,13 @@ class Logger {
     }
 }
 exports.Logger = Logger;
+Logger.level = process.env["LOG_LEVEL"] ?? "info";
+Logger.LEVELS = {
+    debug: 0,
+    info: 1,
+    warn: 2,
+    error: 3,
+};
 // Singleton root logger
 exports.rootLogger = new Logger("ecu-simulator");
 //# sourceMappingURL=index.js.map

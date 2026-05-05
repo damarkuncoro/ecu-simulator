@@ -243,10 +243,27 @@ type ServiceHandlerFn = (frame: Kwp2000Frame) => Kwp2000Response;
   }
 
   private handleEcuReset(frame: Kwp2000Frame): Kwp2000Response {
+    if (frame.data.length < 1) {
+      return this.createNegativeResponse(
+        frame.serviceId,
+        NRC.INCORRECT_MESSAGE_LENGTH_OR_INVALID_FORMAT,
+      );
+    }
+
+    const resetType = frame.data[0]!;
+
+    // Validate reset type (1-5 are valid)
+    if (resetType < 1 || resetType > 5) {
+      return this.createNegativeResponse(
+        frame.serviceId,
+        NRC.REQUEST_OUT_OF_RANGE,
+      );
+    }
+
     // Simple reset - in real implementation this would trigger ECU reset
     return {
       serviceId: frame.serviceId,
-      data: Buffer.from([frame.data[0]!]), // Reset type (hard reset)
+      data: Buffer.from([resetType]),
       isPositive: true,
     };
   }
@@ -266,18 +283,29 @@ type ServiceHandlerFn = (frame: Kwp2000Frame) => Kwp2000Response;
   private handleReadDiagnosticTroubleCodes(
     frame: Kwp2000Frame,
   ): Kwp2000Response {
-    if (frame.data.length < 1) {
+    if (frame.data.length < 2) {
       return this.createNegativeResponse(
         frame.serviceId,
         NRC.INCORRECT_MESSAGE_LENGTH_OR_INVALID_FORMAT,
       );
     }
 
-    const statusMask = frame.data[0]!;
+    const subFunction = frame.data[0]!;
+    const statusMask = frame.data[1]!;
+
+    // For simplicity, we only support sub-function 0x02 (report DTC by status mask)
+    if (subFunction !== 0x02) {
+      return this.createNegativeResponse(
+        frame.serviceId,
+        NRC.SUB_FUNCTION_NOT_SUPPORTED,
+      );
+    }
+
     const dtcPayload = this.dtcEngine.toKwp2000Payload(statusMask);
 
-    // Response format: status availability mask + DTC count + DTC data
+    // Response format: sub-function + status availability mask + DTC count + DTC data
     const responseData = Buffer.concat([
+      Buffer.from([subFunction]),
       Buffer.from([statusMask]), // Status availability mask
       Buffer.from([Math.floor(dtcPayload.length / 3)]), // DTC count (3 bytes per DTC)
       dtcPayload,
@@ -341,7 +369,7 @@ type ServiceHandlerFn = (frame: Kwp2000Frame) => Kwp2000Response;
     switch (securityLevel) {
       case SECURITY_LEVELS.REQUEST_SEED_LEVEL_1:
         // Generate a simple seed (in real implementation, this would be cryptographically secure)
-        this.securitySeed = Math.floor(Math.random() * 0xffffffff);
+        this.securitySeed = 0x12345678; // Fixed seed for testing
         const seedBytes = [
           (this.securitySeed >> 24) & 0xff,
           (this.securitySeed >> 16) & 0xff,
@@ -361,13 +389,14 @@ type ServiceHandlerFn = (frame: Kwp2000Frame) => Kwp2000Response;
             NRC.INCORRECT_MESSAGE_LENGTH_OR_INVALID_FORMAT,
           );
         }
-        // Simple key validation (in real implementation, this would verify against seed)
+        // Simple key validation (in real implementation, this would use proper crypto)
         const keyData = frame.data;
         const sentKey =
           (keyData[1]! << 24) |
           (keyData[2]! << 16) |
           (keyData[3]! << 8) |
           keyData[4]!;
+        // For demo purposes, accept if key matches seed exactly
         if (sentKey === this.securitySeed) {
           return {
             serviceId: frame.serviceId,

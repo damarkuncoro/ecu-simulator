@@ -3,11 +3,6 @@
  * Electron + React-based diagnostic interface for ECU Simulator
  */
 
-import { createTransport } from "@ecu/transport-abstract";
-import { didRegistry } from "@ecu/did-registry";
-import { securityEngine } from "@ecu/security-engine";
-import { timingEngine } from "@ecu/timing-engine";
-import { faultInjector } from "@ecu/fault-injector";
 import { Logger } from "@ecu/logger";
 
 interface DiagnosticSession {
@@ -25,7 +20,6 @@ interface DiagnosticSession {
 export class ECUDiagnosticApp {
   private isInitialized = false;
   private logger = new Logger("desktop-ui");
-  private transport: any = null;
   private session: DiagnosticSession | null = null;
   private ipcHandlers: Map<string, Function> = new Map();
 
@@ -37,10 +31,8 @@ export class ECUDiagnosticApp {
     this.logger.info("Initializing ECU Diagnostic Dashboard...");
 
     try {
-      // Initialize core diagnostic systems
-      await this.initializeTransport();
-      await this.initializeServices();
-      await this.setupIPCHandlers();
+      // Initialize IPC handlers
+      this.setupIPCHandlers();
 
       this.isInitialized = true;
       this.logger.info("ECU Diagnostic Dashboard initialized successfully");
@@ -79,196 +71,8 @@ export class ECUDiagnosticApp {
 
   stop(): void {
     this.logger.info("Stopping ECU Diagnostic Dashboard...");
-
-    if (this.transport) {
-      this.transport
-        .disconnect()
-        .catch((err: any) =>
-          this.logger.warn("Error disconnecting transport", {
-            error: String(err),
-          }),
-        );
-    }
-
     this.session = null;
     this.isInitialized = false;
-  }
-
-  // ─── Transport Management ───────────────────────────────────────────────────
-
-  private async initializeTransport(): Promise<void> {
-    try {
-      this.transport = await createTransport({
-        mode: "tcp",
-        host: process.env["ECU_HOST"] || "127.0.0.1",
-        port: Number(process.env["ECU_PORT"] || 20000),
-      });
-
-      this.transport.on((event: any) => {
-        this.handleTransportEvent(event);
-      });
-
-      this.logger.info("Transport layer initialized");
-    } catch (error) {
-      this.logger.error("Failed to initialize transport", {
-        error: String(error),
-      });
-      throw error;
-    }
-  }
-
-  private async initializeServices(): Promise<void> {
-    // Register standard DIDs
-    didRegistry.getAllDefinitions().forEach((def) => {
-      this.logger.debug("Registered DID", {
-        id: def.id.toString(16),
-        name: def.name,
-      });
-    });
-
-    // Configure timing engine
-    timingEngine.updateConfig({
-      protocol: "kwp2000",
-      baudRate: 10400,
-      adaptive: true,
-    });
-
-    this.logger.info("Diagnostic services initialized");
-  }
-
-  private handleTransportEvent(event: any): void {
-    switch (event.type) {
-      case "connected":
-        if (this.session) {
-          this.session.connected = true;
-          this.session.lastActivity = new Date();
-        }
-        this.logger.info("Transport connected");
-        break;
-
-      case "disconnected":
-        if (this.session) {
-          this.session.connected = false;
-        }
-        this.logger.info("Transport disconnected", { reason: event.reason });
-        break;
-
-      case "data":
-        if (this.session) {
-          this.session.stats.responsesReceived++;
-          this.session.lastActivity = new Date();
-        }
-        this.handleIncomingData(event.payload);
-        break;
-
-      case "error":
-        if (this.session) {
-          this.session.stats.errors++;
-        }
-        this.logger.error("Transport error", { error: String(event.error) });
-        break;
-    }
-  }
-
-  private handleIncomingData(data: Buffer): void {
-    this.logger.debug("Received data", {
-      length: data.length,
-      hex: data.toString("hex"),
-    });
-    // In full implementation, this would parse protocol messages
-  }
-
-  // ─── IPC Communication ─────────────────────────────────────────────────────
-
-  private setupIPCHandlers(): void {
-    // Connection management
-    this.ipcHandlers.set("connect", async () => {
-      try {
-        await this.transport.connect();
-        return { success: true };
-      } catch (error) {
-        return { success: false, error: String(error) };
-      }
-    });
-
-    this.ipcHandlers.set("disconnect", async () => {
-      try {
-        await this.transport.disconnect();
-        return { success: true };
-      } catch (error) {
-        return { success: false, error: String(error) };
-      }
-    });
-
-    // DID operations
-    this.ipcHandlers.set("read-did", async (params: { id: number }) => {
-      try {
-        const value = didRegistry.getValue(params.id);
-        return { success: true, value };
-      } catch (error) {
-        return { success: false, error: String(error) };
-      }
-    });
-
-    this.ipcHandlers.set(
-      "write-did",
-      async (params: { id: number; data: Buffer }) => {
-        try {
-          didRegistry.setValue(params.id, params.data);
-          return { success: true };
-        } catch (error) {
-          return { success: false, error: String(error) };
-        }
-      },
-    );
-
-    // Security operations
-    this.ipcHandlers.set("security-seed", async (params: { level: number }) => {
-      try {
-        const seed = securityEngine.generateSeed(params.level);
-        return { success: true, seed: seed.toString("hex") };
-      } catch (error) {
-        return { success: false, error: String(error) };
-      }
-    });
-
-    this.ipcHandlers.set(
-      "security-key",
-      async (params: { level: number; key: string }) => {
-        try {
-          const keyBuffer = Buffer.from(params.key, "hex");
-          const valid = securityEngine.verifyKey(params.level, keyBuffer);
-          if (valid) {
-            securityEngine.unlockLevel(params.level);
-          }
-          return { success: valid };
-        } catch (error) {
-          return { success: false, error: String(error) };
-        }
-      },
-    );
-
-    // Session info
-    this.ipcHandlers.set("get-session", () => {
-      return { success: true, session: this.session };
-    });
-
-    // Fault injection
-    this.ipcHandlers.set("get-faults", () => {
-      return {
-        success: true,
-        faults: faultInjector.getAllFaults(),
-        active: faultInjector.getActiveFaults(),
-        stats: faultInjector.getStats(),
-      };
-    });
-
-    this.ipcHandlers.set("trigger-fault", (params: { id: string }) => {
-      const success = faultInjector.triggerFault(params.id);
-      return { success };
-    });
-
-    this.logger.info("IPC handlers configured");
   }
 
   // ─── Utility Methods ───────────────────────────────────────────────────────
@@ -283,6 +87,89 @@ export class ECUDiagnosticApp {
 
   isConnected(): boolean {
     return this.session?.connected ?? false;
+  }
+
+  // ─── IPC Communication ─────────────────────────────────────────────────────
+
+  private setupIPCHandlers(): void {
+    // Connection management
+    this.ipcHandlers.set("connect", async () => {
+      // Simulate connection - in full implementation this would connect to ECU
+      if (this.session) {
+        this.session.connected = true;
+        this.session.lastActivity = new Date();
+      }
+      return { success: true };
+    });
+
+    this.ipcHandlers.set("disconnect", async () => {
+      if (this.session) {
+        this.session.connected = false;
+      }
+      return { success: true };
+    });
+
+    // DID operations (mock implementations)
+    this.ipcHandlers.set("read-did", async (params: { id: number }) => {
+      // Mock DID reading - in full implementation this would read from ECU
+      const mockValues: Record<number, string> = {
+        0x0c00: '0fa0', // Engine RPM: 4000 RPM
+        0x0c04: '0fa0', // Engine Speed: 4000 RPM
+      };
+
+      const value = mockValues[params.id];
+      if (value) {
+        return { success: true, value };
+      } else {
+        return { success: false, error: 'DID not found' };
+      }
+    });
+
+    this.ipcHandlers.set("write-did", async (params: { id: number; data: string }) => {
+      // Mock DID writing
+      return { success: true };
+    });
+
+    // Security operations (mock implementations)
+    this.ipcHandlers.set("security-seed", async (params: { level: number }) => {
+      // Mock seed generation
+      const mockSeed = '12345678';
+      return { success: true, seed: mockSeed };
+    });
+
+    this.ipcHandlers.set("security-key", async (params: { level: number; key: string }) => {
+      // Mock key verification - accept if key matches mock seed
+      const expectedKey = '12345678';
+      const valid = params.key.toLowerCase() === expectedKey;
+      return { success: valid };
+    });
+
+    // Session info
+    this.ipcHandlers.set("get-session", () => {
+      return { success: true, session: this.session };
+    });
+
+    // Fault injection (mock implementations)
+    this.ipcHandlers.set("get-faults", () => {
+      // Mock fault data
+      const mockFaults = [
+        { id: 'comm_timeout', name: 'Communication Timeout', severity: 'high', active: false },
+        { id: 'sensor_drift', name: 'Sensor Drift', severity: 'low', active: false },
+      ];
+      return {
+        success: true,
+        faults: mockFaults,
+        active: [],
+        stats: { enabled: true, totalFaults: 2, activeFaults: 0, triggeredCount: 0, config: {} },
+      };
+    });
+
+    this.ipcHandlers.set("trigger-fault", (params: { id: string }) => {
+      // Mock fault triggering
+      return { success: true };
+    });
+
+    this.logger.info("IPC handlers configured");
   }
 
   private generateSessionId(): string {

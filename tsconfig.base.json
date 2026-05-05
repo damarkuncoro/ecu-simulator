@@ -14,31 +14,6 @@
     "esModuleInterop": true,
     "resolveJsonModule": true,
     "skipLibCheck": true,
-    "downlevelIteration": true,
-    "useDefineForClassFields": false,
-    "baseUrl": ".",
-    "paths": {
-      "@ecu/core-kernel": ["packages/core/ecu-kernel/src/index.ts"],
-      "@ecu/timing-engine": ["packages/core/timing-engine/src/index.ts"],
-      "@ecu/fault-injector": ["packages/core/fault-injector/src/index.ts"],
-      "@ecu/iso9141": ["packages/protocols/iso9141/src/index.ts"],
-      "@ecu/kwp2000": ["packages/protocols/kwp2000/src/index.ts"],
-      "@ecu/uds": ["packages/protocols/uds/src/index.ts"],
-      "@ecu/dtc-engine": ["packages/services/dtc-engine/src/index.ts"],
-      "@ecu/did-registry": ["packages/services/did-registry/src/index.ts"],
-      "@ecu/security-engine": [
-        "packages/services/security-engine/src/index.ts"
-      ],
-      "@ecu/session-fsm": ["packages/services/session-fsm/src/index.ts"],
-      "@ecu/transport-abstract": ["packages/transport/abstract/src/index.ts"],
-      "@ecu/transport-tcp": ["packages/transport/tcp/src/index.ts"],
-      "@ecu/transport-serial": ["packages/transport/serial/src/index.ts"],
-      "@ecu/transport-ws": ["packages/transport/websocket/src/index.ts"],
-      "@ecu/checksum": ["packages/utils/checksum/src/index.ts"],
-      "@ecu/logger": ["packages/utils/logger/src/index.ts"],
-      "@ecu/test-helpers": ["packages/utils/test-helpers/src/index.ts"],
-      "@ecu/dtc-utils": ["packages/utils/dtc-utils/src/index.ts"],
-      "@ecu/protocol-constants": ["packages/utils/protocol-constants/src/index.ts"]
-    }
+    "useDefineForClassFields": false
   }
 }
